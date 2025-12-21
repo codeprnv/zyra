@@ -8,6 +8,15 @@
     },
     {
       "path": "./apps/auth-service"
+    },
+    {
+      "path": "./api-gateway-e2e"
+    },
+    {
+      "path": "./api-gateway"
+    },
+    {
+      "path": "./apps/api-gateway"
     }
   ]
 }
