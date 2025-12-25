@@ -1,12 +1,23 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "dist",
+    "outDir": "out-tsc/auth-service",
     "types": ["node"],
     "rootDir": "../../",
-    "tsBuildInfoFile": "dist/tsconfig.app.tsbuildinfo"
+    "tsBuildInfoFile": "out-tsc/auth-service/tsconfig.app.tsbuildinfo",
+    "baseUrl": ".",
+    "paths": {
+      "@packages/*": ["../../packages/*"]
+    },
+    "resolveJsonModule": true
   },
-  "include": ["src/**/*.ts", "../../packages/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.json",
+    "../../packages/**/*.ts",
+    "../../packages/**/*.json",
+    "../../generated/prisma/**/*.ts"
+  ],
   "exclude": [
     "out-tsc",
     "dist",

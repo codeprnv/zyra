@@ -1,43 +1,77 @@
 {
   "name": "@zyra/auth-service",
   "version": "0.0.1",
+  "type": "module",
   "private": true,
   "nx": {
     "targets": {
+      "prisma-generate": {
+        "executor": "nx:run-commands",
+        "outputs": [
+          "{workspaceRoot}/generated/prisma"
+        ],
+        "options": {
+          "command": "npx prisma generate",
+          "cwd": "{workspaceRoot}"
+        }
+      },
       "build": {
         "executor": "@nx/esbuild:esbuild",
         "outputs": [
           "{options.outputPath}"
         ],
         "defaultConfiguration": "production",
+        "dependsOn": [
+          "prisma-generate"
+        ],
         "options": {
           "platform": "node",
           "outputPath": "apps/auth-service/dist",
           "format": [
-            "cjs"
+            "esm"
           ],
-          "bundle": false,
+          "bundle": true,
           "main": "apps/auth-service/src/main.ts",
           "tsConfig": "apps/auth-service/tsconfig.app.json",
           "assets": [
-            "apps/auth-service/src/assets"
+            "apps/auth-service/src/assets",
+            {
+              "input": "apps/auth-service/src",
+              "glob": "swagger-output.json",
+              "output": "."
+            }
           ],
           "esbuildOptions": {
             "sourcemap": true,
             "outExtension": {
               ".js": ".js"
-            }
+            },
+            "external": [
+              "@prisma/client",
+              "@prisma/engines",
+              "ioredis"
+            ]
           }
         },
         "configurations": {
-          "development": {},
+          "development": {
+            "esbuildOptions": {
+              "sourcemap": true,
+              "external": [
+                "@prisma/client",
+                "@prisma/engines",
+                "ioredis"
+              ]
+            }
+          },
           "production": {
-            "generateLockfile": true,
             "esbuildOptions": {
               "sourcemap": false,
-              "outExtension": {
-                ".js": ".js"
-              }
+              "external": [
+                "@prisma/client",
+                "@prisma/engines",
+                "ioredis"
+              ]
             }
           }
         }
@@ -85,8 +119,12 @@
         ],
         "options": {
           "buildTarget": "@zyra/auth-service:build",
-          "runBuildTargetDependencies": false
+          "runBuildTargetDependencies": false,
+          "host": "localhost"
         },
+        "runtimeArgs": [
+          "--env-file=.env"
+        ],
         "configurations": {
           "development": {
             "buildTarget": "@zyra/auth-service:build:development"
@@ -110,6 +148,9 @@
     }
   },
   "dependencies": {
-    "express": "^4.21.2"
+    "@prisma/client": "6.19.0",
+    "express": "^4.21.2",
+    "redis": "^4.6.0",
+    "tsconfig-paths": "^4.2.0"
   }
 }

@@ -7,8 +7,10 @@ import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import morgan from 'morgan';
 // import swagger from 'swagger-ui-express';
 
-const host = process.env.HOST ?? 'localhost';
-const port = process.env.PORT ? Number(process.env.PORT) : 8080;
+const host = process.env.HOST ?? 'http://localhost';
+const port = process.env.API_GATEWAY_PORT
+  ? Number(process.env.API_GATEWAY_PORT)
+  : 8080;
 
 const app = express();
 
@@ -17,6 +19,7 @@ app.use(
     origin: ['http://localhost:3000'],
     allowedHeaders: ['Authorization', 'Content-Type'],
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   })
 );
 
@@ -43,8 +46,8 @@ app.get('/gateway-health', (req, res) => {
   res.send({ message: 'Welcome to api-gateway!' });
 });
 
-app.use('/', proxy('http://localhost:6001'));
+app.use('/api', proxy(`${host}:${process.env.AUTH_SERVICE_PORT}`));
 
-app.listen(port, host, () => {
-  console.log(`[ ready ] http://${host}:${port}`);
+app.listen(port, () => {
+  console.log(`[ ready ] ${host}:${port}`);
 });
