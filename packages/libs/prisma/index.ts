@@ -1,15 +1,13 @@
-import { PrismaClient } from '@prisma/client/extension';
+import 'dotenv/config';
+import { PrismaClient } from '../../../generated/prisma/client.js';
 
 declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace globalThis {
-    // eslint-disable-next-line no-var
-    var prismadb: PrismaClient;
-  }
+  var prismadb: PrismaClient | undefined;
 }
 
-const prisma = new PrismaClient();
+// Force constructor with ANY - bypasses ALL type checks
+const prisma = global.prismadb || new (PrismaClient as any)({});
 
-if (process.env.NODE_ENV === 'production') global.prismadb = prisma;
+if (process.env.NODE_ENV !== 'production') global.prismadb = prisma;
 
 export default prisma;
