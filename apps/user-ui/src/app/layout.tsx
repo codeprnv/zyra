@@ -1,5 +1,6 @@
 import { Poppins, Roboto } from 'next/font/google';
 import './global.css';
+import Providers from './providers';
 import Header from './shared/widgets/header';
 
 export const metadata = {
@@ -10,7 +11,7 @@ export const metadata = {
 const roboto = Roboto({
   subsets: ['latin'],
   weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
-  variable: '--font-roboto'
+  variable: '--font-roboto',
 });
 
 const poppins = Poppins({
@@ -27,8 +28,10 @@ export default function RootLayout({
   return (
     <html lang='en'>
       <body className={`${roboto.variable} ${poppins.variable}`}>
-        <Header/>
-        {children}
+        <Providers>
+          <Header />
+          {children}
+        </Providers>
       </body>
     </html>
   );

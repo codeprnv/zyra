@@ -9,7 +9,8 @@
     "dev:gateway": "npx nx serve @zyra/api-gateway",
     "dev:clean": "npx kill-port 6001 6002 8080 9229 && nx reset && npm run dev",
     "auth-docs": "node apps/auth-service/src/swagger.js",
-    "user-ui": "npx nx run-many --target=dev --all --projects=user-ui"
+    "user-ui": "npx nx run-many --target=dev --all --projects=user-ui",
+    "seller-ui": "npx nx run-many --target=dev --all --projects=seller-ui"
   },
   "private": true,
   "dependencies": {
@@ -35,6 +36,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.69.0",
+    "react-hot-toast": "^2.6.0",
     "swagger-autogen": "^2.23.7",
     "swagger-ui-express": "^5.0.1",
     "tsconfig-paths": "^4.2.0"

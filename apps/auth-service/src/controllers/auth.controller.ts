@@ -16,6 +16,8 @@ import {
   verifyOtp,
 } from '../utils/auth.helper.js';
 
+const { JsonWebTokenError } = jwt;
+
 // Register new user
 export const userRegistration = async (
   req: Request,
@@ -121,6 +123,70 @@ export const loginUser = async (
     res.status(200).json({
       message: 'Login Successful!',
       user: { id: user.id, email: user.email, name: user.name },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Refresh token user
+export const refreshToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const refreshToken = req.cookies.refresh_token;
+    if (!refreshToken) {
+      throw new ValidationError('Unauthorized! No refresh token found.');
+    }
+
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.REFRESH_TOKEN_SECRET as string
+    ) as { id: string; role: string };
+
+    if (!decoded || !decoded.id || !decoded.role) {
+      throw new JsonWebTokenError('Forbidden! Invalid refresh token.');
+    }
+
+    // let account;
+    // if (decoded.role === 'user') {
+    //   account = await prisma.users.findUnique({ where: { id: decoded.id } });
+    // }
+    const user = await prisma.users.findUnique({ where: { id: decoded.id } });
+
+    if (!user) {
+      throw new AuthError('Forbidden! User/Seller not found.');
+    }
+
+    const newAccessToken = jwt.sign(
+      {
+        id: decoded.id,
+        role: decoded.role,
+      },
+      process.env.ACCESS_TOKEN_SECRET as string,
+      {
+        expiresIn: '15m',
+      }
+    );
+
+    setCookie(res, 'access_token', newAccessToken);
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    next(error);
+    return; // Ensure a return value in the catch block
+  }
+};
+
+// Get logged in user
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const getUser = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const user = req.user;
+    res.status(201).json({
+      success: true,
+      user,
     });
   } catch (error) {
     next(error);

@@ -1,20 +1,23 @@
 'use client';
 import {
-    AlignLeft,
-    ChevronDown,
-    HeartIcon,
-    Search,
-    ShoppingCart,
+  AlignLeft,
+  ChevronDown,
+  HeartIcon,
+  ShoppingCart,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
 import { navItems } from '../../../../configs/constants';
 import user_profile from '../../../assets/images/user-profile.png';
+import useUser from '../../../hooks/useUser';
 
 const HeaderBottom = () => {
   const [show, setShow] = useState<boolean>(false);
   const [isSticky, setIsSticky] = useState<boolean>(false);
+  const { user,isLoading } = useUser();
+  
+  console.log(user)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -70,16 +73,45 @@ const HeaderBottom = () => {
           {isSticky && (
             <div className='flex items-center gap-8 py-4'>
               <div className='flex items-center gap-2'>
-                <Link
-                  href={'/login'}
-                  className='flex h-[50px] w-[50px] items-center justify-center rounded-full border-2 border-[#010f1c1a]'
-                >
-                  <Image src={user_profile} alt='user-profile-pic' width={36} />
-                </Link>
-                <Link href={'/login'}>
-                  <span className='block font-medium'>Hello, </span>
-                  <span className='font-semibold'>Sign In</span>
-                </Link>
+                {!isLoading && user ? (
+                  <>
+                    <Link
+                      href='/profile'
+                      className='flex h-[50px] w-[50px] items-center justify-center rounded-full border-2 border-[#010f1c1a]'
+                    >
+                      <Image
+                        src={user_profile}
+                        alt='user-profile-pic'
+                        width={36}
+                      />
+                    </Link>
+                    <Link href={'/profile'}>
+                      <span className='block font-medium'>Hello, </span>
+                      <span className='font-bold'>
+                        {user?.name?.split(' ')[0]}
+                      </span>
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href={'/login'}
+                      className='flex h-[50px] w-[50px] items-center justify-center rounded-full border-2 border-[#010f1c1a]'
+                    >
+                      <Image
+                        src={user_profile}
+                        alt='user-profile-pic'
+                        width={36}
+                      />
+                    </Link>
+                    <Link href={'/login'}>
+                      <span className='block font-medium'>Hello, </span>
+                      <span className='font-bold'>
+                        {isLoading ? '...' : 'Sign In'}
+                      </span>
+                    </Link>
+                  </>
+                )}
               </div>
               <div className='flex items-center gap-5'>
                 <Link href={'/wishlist'} className='relative'>

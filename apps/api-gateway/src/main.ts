@@ -46,7 +46,7 @@ app.get('/gateway-health', (req, res) => {
   res.send({ message: 'Welcome to api-gateway!' });
 });
 
-app.use('/api', proxy(`${host}:${process.env.AUTH_SERVICE_PORT}`));
+app.use('/', proxy(`${host}:${process.env.AUTH_SERVICE_PORT}`));
 
 app.listen(port, () => {
   console.log(`[ ready ] ${host}:${port}`);
