@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import GoogleButton from '../../shared/components/google-button';
+
 
 type formData = {
   email: string;
@@ -55,8 +55,8 @@ const Login = () => {
     loginMutation.mutate(data);
   };
   return (
-    <div className='min-h-[85vh] w-full bg-[#f1f1f1] py-10'>
-      <h1 className='text-center font-Poppins text-4xl font-semibold text-black'>
+    <div className='min-h-screen w-full bg-[#f1f1f1] py-10'>
+      <h1 className='font-Poppins text-center text-4xl font-semibold text-black'>
         Login
       </h1>
       <p className='py-3 text-center text-lg font-medium text-[#00000099]'>
@@ -74,7 +74,6 @@ const Login = () => {
             </Link>
           </p>
 
-          <GoogleButton />
           <div className='my-5 flex items-center text-sm text-gray-400'>
             <div className='flex-1 border-t border-gray-300' />
             <span className='px-3'>or Sign in with Email</span>

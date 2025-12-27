@@ -12,7 +12,7 @@ export const validateRegistrationData = (
   data: any,
   userType: 'user' | 'seller'
 ) => {
-  const { name, email, password, phone_number, country } = data;
+  const { email, name, password, phone_number, country } = data;
 
   if (
     !name ||
@@ -149,7 +149,7 @@ export const handleForgotPassword = async (
     await trackOtpRequests(email);
 
     // Generate OTP and send email
-    await sendOtp(email, user.name, 'forgot-password-user-mail');
+    await sendOtp(user.name, email, 'forgot-password-user-mail');
 
     res.status(200).json({
       message: 'OTP sent to email. Please verify your account.',
@@ -162,8 +162,7 @@ export const handleForgotPassword = async (
 export const verifyForgotPasswordOtp = async (
   req: Request,
   res: Response,
-  next: NextFunction,
- 
+  next: NextFunction
 ) => {
   try {
     const { email, otp } = req.body;
