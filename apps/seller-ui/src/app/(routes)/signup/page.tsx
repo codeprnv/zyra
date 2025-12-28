@@ -3,10 +3,12 @@ import { useMutation } from '@tanstack/react-query';
 import axios, { AxiosError } from 'axios';
 import { Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+// import { useRouter } from 'next/navigation';
 import React, { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { countries } from '../../utils/countries';
+import StripeLogo from '../../../assets/svgs/stripe-logo';
+import CreateShop from '../../shared/modules/auth/create-shop';
+import { countries } from '../../../utils/countries';
 
 type formData = {
   name: string;
@@ -23,11 +25,12 @@ const Signup = () => {
   const [timer, setTimer] = useState(60);
   const [showOtp, setShowOtp] = useState<boolean>(false);
   const [otp, setOtp] = useState(['', '', '', '']);
-  const [userData, setUserData] = useState<formData | null>(null);
+  const [sellerData, setSellerData] = useState<formData | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [activeStep, setActiveStep] = useState(1);
+  const [sellerId, setSellerId] = useState('');
 
-  const router = useRouter();
+  // const router = useRouter();
 
   const {
     register,
@@ -51,7 +54,7 @@ const Signup = () => {
   const signupMutation = useMutation({
     mutationFn: async (data: formData) => {
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_SERVER_URI}/api/user-registration`,
+        `${process.env.NEXT_PUBLIC_SERVER_URI}/api/seller-registration`,
         {
           ...data,
         }
@@ -59,7 +62,7 @@ const Signup = () => {
       return response.data;
     },
     onSuccess: (_, formData) => {
-      setUserData(formData);
+      setSellerData(formData);
       setShowOtp(true);
       setCanResend(false);
       setTimer(60);
@@ -75,18 +78,19 @@ const Signup = () => {
 
   const verifyOtpMutation = useMutation({
     mutationFn: async () => {
-      if (!userData) return;
+      if (!sellerData) return;
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_SERVER_URI}/api/verify-user`,
+        `${process.env.NEXT_PUBLIC_SERVER_URI}/api/verify-seller`,
         {
-          ...userData,
+          ...sellerData,
           otp: otp.join(''),
         }
       );
       return response.data;
     },
-    onSuccess: () => {
-      router.push('/login');
+    onSuccess: (data) => {
+      setSellerId(data?.seller?.id);
+      setActiveStep(2);
     },
     onError: (error: AxiosError) => {
       const errorMessage =
@@ -122,8 +126,24 @@ const Signup = () => {
   };
 
   const resendOtp = () => {
-    if (userData) {
-      signupMutation.mutate(userData);
+    if (sellerData) {
+      signupMutation.mutate(sellerData);
+    }
+  };
+
+  const connectStripe = async () => {
+    try {
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_SERVER_URI}/api/create-stripe-link`,
+        {
+          sellerId,
+        }
+      );
+      if (response.data.url) {
+        window.location.href = response.data.url;
+      }
+    } catch (error) {
+      console.error('Stripe connection error: ', error);
     }
   };
 
@@ -200,7 +220,7 @@ const Signup = () => {
                   {...register('phone_number', {
                     required: 'Phone number is required!',
                     pattern: {
-                      value: /^\+?[1-9]\d{1, 14}$/,
+                      value: /^\+?[1-9]\d{1,14}$/,
                       message: 'Invalid phone number format!',
                     },
                     minLength: {
@@ -294,11 +314,11 @@ const Signup = () => {
                     </p>
                   )}
 
-                {serverError && (
+                {/* {serverError && (
                   <p className='mt-2 text-sm text-red-500'>
                     {String(serverError)}
                   </p>
-                )}
+                )} */}
 
                 <p className='pt-3 text-center'>
                   Already have an account? &nbsp;{' '}
@@ -366,6 +386,21 @@ const Signup = () => {
               </div>
             )}
           </>
+        )}
+        {activeStep === 2 && (
+          <CreateShop sellerId={sellerId} setActiveStep={setActiveStep} />
+        )}
+        {activeStep === 3 && (
+          <div className='text-center'>
+            <h3 className='text-2xl font-semibold'>Withdraw Method</h3>
+            <br />
+            <button
+              className='m-auto flex w-full items-center justify-center gap-3 rounded-lg bg-[#334155] py-2 text-lg text-white'
+              onClick={connectStripe}
+            >
+              Connect Stripe <StripeLogo />
+            </button>
+          </div>
         )}
       </div>
     </div>
