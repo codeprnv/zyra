@@ -5,6 +5,7 @@ import express from 'express';
 import proxy from 'express-http-proxy';
 import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import morgan from 'morgan';
+import initializeConfig from './libs/initializeSiteConfig.js';
 // import swagger from 'swagger-ui-express';
 
 const host = process.env.HOST ?? 'http://localhost';
@@ -48,6 +49,12 @@ app.get('/gateway-health', (req, res) => {
 
 app.use('/', proxy(`${host}:${process.env.AUTH_SERVICE_PORT}`));
 
-app.listen(port, () => {
+app.listen(port, async () => {
   console.log(`[ ready ] ${host}:${port}`);
+  try {
+    await initializeConfig();
+    console.log('Site config initialized successfully!');
+  } catch (error) {
+    console.error('Failed to initialize site config: ', error);
+  }
 });

@@ -4,19 +4,32 @@
   "private": true,
   "nx": {
     "targets": {
+      "prisma-generate": {
+        "executor": "nx:run-commands",
+        "outputs": [
+          "{workspaceRoot}/generated/prisma"
+        ],
+        "options": {
+          "command": "npx prisma generate",
+          "cwd": "{workspaceRoot}"
+        }
+      },
       "build": {
         "executor": "@nx/esbuild:esbuild",
         "outputs": [
           "{options.outputPath}"
         ],
         "defaultConfiguration": "production",
+        "dependsOn": [
+          "prisma-generate"
+        ],
         "options": {
           "platform": "node",
           "outputPath": "apps/api-gateway/dist",
           "format": [
-            "cjs"
+            "esm"
           ],
-          "bundle": false,
+          "bundle": true,
           "main": "apps/api-gateway/src/main.ts",
           "tsConfig": "apps/api-gateway/tsconfig.app.json",
           "assets": [
@@ -26,17 +39,30 @@
             "sourcemap": true,
             "outExtension": {
               ".js": ".js"
-            }
+            },
+            "external": [
+              "@prisma/client",
+              "@prisma/engines"
+            ]
           }
         },
         "configurations": {
-          "development": {},
+          "development": {
+            "esbuildOptions": {
+              "sourcemap": true,
+              "external": [
+                "@prisma/client",
+                "@prisma/engines"
+              ]
+            }
+          },
           "production": {
             "esbuildOptions": {
               "sourcemap": false,
-              "outExtension": {
-                ".js": ".js"
-              }
+              "external": [
+                "@prisma/client",
+                "@prisma/engines"
+              ]
             }
           }
         }
@@ -98,6 +124,7 @@
     }
   },
   "dependencies": {
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "@prisma/client": "6.19.0"
   }
 }

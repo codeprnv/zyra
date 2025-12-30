@@ -108,6 +108,9 @@ export const loginUser = async (
       throw new AuthError('Invalid email or password!');
     }
 
+    res.clearCookie('seller_access_token');
+    res.clearCookie('seller_refresh_token');
+
     // Generate access token and refresh token
 
     const accessToken = jwt.sign(
@@ -135,12 +138,16 @@ export const loginUser = async (
 
 // Refresh token user
 export const refreshToken = async (
-  req: Request,
+  req: any,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const refreshToken = req.cookies.refresh_token;
+    const refreshToken =
+      req.cookies['refresh_token'] ||
+      req.cookies['seller_refresh_token'] ||
+      req.headers.authorization?.split(' ')[1];
+
     if (!refreshToken) {
       throw new ValidationError('Unauthorized! No refresh token found.');
     }
@@ -154,13 +161,17 @@ export const refreshToken = async (
       throw new JsonWebTokenError('Forbidden! Invalid refresh token.');
     }
 
-    // let account;
-    // if (decoded.role === 'user') {
-    //   account = await prisma.users.findUnique({ where: { id: decoded.id } });
-    // }
-    const user = await prisma.users.findUnique({ where: { id: decoded.id } });
+    let account;
+    if (decoded.role === 'user') {
+      account = await prisma.users.findUnique({ where: { id: decoded.id } });
+    } else if (decoded.role === 'seller') {
+      account = await prisma.sellers.findUnique({
+        where: { id: decoded.id },
+        include: { shop: true },
+      });
+    }
 
-    if (!user) {
+    if (!account) {
       throw new AuthError('Forbidden! User/Seller not found.');
     }
 
@@ -175,7 +186,14 @@ export const refreshToken = async (
       }
     );
 
-    setCookie(res, 'access_token', newAccessToken);
+    if (decoded.role === 'user') {
+      setCookie(res, 'access_token', newAccessToken);
+    } else if (decoded.role === 'seller') {
+      setCookie(res, 'seller_access_token', newAccessToken);
+    }
+
+    req.role = decoded.role
+
     return res.status(200).json({ success: true });
   } catch (error) {
     next(error);
@@ -336,7 +354,7 @@ export const createShop = async (
   try {
     const { name, bio, address, opening_hours, website, category, sellerId } =
       req.body;
-    
+
     if (!name || !bio || !address || !category || !sellerId || !opening_hours) {
       throw new ValidationError('All fields are required!');
     }
@@ -444,6 +462,9 @@ export const loginSeller = async (
       throw new ValidationError('Invalid email or password!');
     }
 
+    res.clearCookie("access_token")
+    res.clearCookie("refresh_token")
+
     // Generate access token and refresh token
 
     const accessToken = jwt.sign(
@@ -470,8 +491,12 @@ export const loginSeller = async (
 };
 
 // Get logged in Seller
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const getSeller = async (req: any, res: Response, next: NextFunction) => {
+ 
+export const getSeller = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const seller = req.seller;
     res.status(201).json({
