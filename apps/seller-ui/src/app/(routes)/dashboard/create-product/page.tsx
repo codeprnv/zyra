@@ -1,12 +1,17 @@
 'use client';
+import { useQuery } from '@tanstack/react-query';
 import { ChevronRight } from 'lucide-react';
+import Link from 'next/link';
 import ColorSelector from 'packages/components/color-selector';
 import CustomProperties from 'packages/components/custom-properties';
 import CustomSpecifications from 'packages/components/custom-specifications';
 import Input from 'packages/components/input';
-import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import RichTextEditor from 'packages/components/rich-text-editor';
+import SizeSelector from 'packages/components/size-selector';
+import React, { useMemo, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import ImagePlaceholder from '../../../../shared/components/image-placeholder';
+import axiosInstance from '../../../../utils/axiosInstance';
 
 const Page = () => {
   const {
@@ -22,6 +27,37 @@ const Page = () => {
   const [isChanged, setIsChanged] = useState(false);
   const [images, setImages] = useState<(File | null)[]>([null]);
   const [loading, setLoading] = useState(false);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      try {
+        const res = await axiosInstance.get('/product/api/get-categories');
+        return res.data;
+      } catch (error) {
+        console.error('Error fetching products: ', error);
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 2,
+  });
+
+  const categories = data?.categories || [];
+  const subCategoriesData = data?.subCategories || [];
+
+  const selectedCategory = watch('category');
+  const regularPrice = watch('regular_price');
+
+  const subCategories = useMemo(() => {
+    return selectedCategory ? subCategoriesData[selectedCategory] || [] : [];
+  }, [selectedCategory, subCategoriesData]);
+
+  console.log(
+    'Categories: ',
+    categories,
+    '\nSubcategories: ',
+    subCategoriesData
+  );
 
   const onSubmit = (data: any) => {
     console.log('Data: ', data);
@@ -59,6 +95,10 @@ const Page = () => {
     setValue('images', images);
   };
 
+  const handleSaveDraft = () => {
+    console.log('');
+  };
+
   return (
     <form
       className='mx-auto w-full rounded-lg p-8 text-white shadow-md'
@@ -68,8 +108,10 @@ const Page = () => {
         Create Product
       </h2>
 
-      <div className='flex items-center'>
-        <span className='cursor-pointer text-[#80Deea]'>Dashboard</span>
+      <div className='flex items-center text-white'>
+        <Link href='/dashboard' className='cursor-pointer text-[#80Deea]'>
+          Dashboard
+        </Link>
         <ChevronRight className='opacity-[0.8]' size={20} />
         <span>Create Product</span>
       </div>
@@ -238,11 +280,240 @@ const Page = () => {
                 </select>
               </div>
             </div>
-            <div className="w-2/4">
-              <label className="block font-semibold text-gray-300 mb-1">Category *</label>
+            <div className='w-2/4'>
+              <label className='mb-1 block font-semibold text-gray-300'>
+                Category *
+              </label>
+              {isLoading ? (
+                <p className='text-gray-400'>Loading Categories...</p>
+              ) : isError ? (
+                <p className='text-red-500'>Failed to load categories</p>
+              ) : (
+                <Controller
+                  name='category'
+                  control={control}
+                  rules={{ required: 'Category is required!' }}
+                  render={({ field }) => (
+                    <select
+                      {...field}
+                      className='w-full border border-gray-700 bg-transparent outline-none'
+                    >
+                      <option value={''} className='bg-black'>
+                        Select Category
+                      </option>
+                      {categories?.map((category: string) => (
+                        <option
+                          key={category}
+                          value={category}
+                          className='bg-black'
+                        >
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                />
+              )}
+              {errors.category && (
+                <p className='mt-1 text-xs text-red-500'>
+                  {errors.category.message as string}
+                </p>
+              )}
+              <div className='mt-2'>
+                <label className='mb-1 block font-semibold text-gray-300'>
+                  Subcategory *
+                </label>
+                {isLoading ? (
+                  <p className='text-gray-400'>Loading SubCategories...</p>
+                ) : isError ? (
+                  <p className='text-red-500'>Failed to load subcategories</p>
+                ) : (
+                  <Controller
+                    name='subcategory'
+                    control={control}
+                    rules={{ required: 'SubCategory is required!' }}
+                    render={({ field }) => (
+                      <select
+                        {...field}
+                        className='w-full border border-gray-700 bg-transparent outline-none'
+                      >
+                        <option value={''} className='bg-black'>
+                          Select Subcategory
+                        </option>
+                        {subCategories?.map((subcategory: string) => (
+                          <option
+                            key={subcategory}
+                            value={subcategory}
+                            className='bg-black'
+                          >
+                            {subcategory}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  />
+                )}
+                {errors.subcategory && (
+                  <p className='mt-1 text-xs text-red-500'>
+                    {errors.subcategory.message as string}
+                  </p>
+                )}
+              </div>
+              <div className='mt-2'>
+                <label className='mb-1 block font-semibold text-gray-300'>
+                  Detailed Description * (Min 100 words)
+                </label>
+                <Controller
+                  name='detailed_description'
+                  control={control}
+                  rules={{
+                    required: 'Detailed Description is required!',
+                    validate: (value) => {
+                      const wordCount = value
+                        ?.split(/\s+/)
+                        .filter((word: string) => word).length;
+                      return (
+                        wordCount >= 100 ||
+                        'Description must be at least 100 words!'
+                      );
+                    },
+                  }}
+                  render={({ field }) => (
+                    <RichTextEditor
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+                {errors.detailed_description && (
+                  <p className='mt-1 text-xs text-red-500'>
+                    {errors.detailed_description.message as string}
+                  </p>
+                )}
+              </div>
+              <div className='mt-2'>
+                <Input
+                  label='Video URL'
+                  placeholder='https://www.youtube.com/embed/xyz123'
+                  {...register('video_url', {
+                    pattern: {
+                      value: /^https?:\/\/(www\.)?youtube\.com\/embed\/[\w-]+$/,
+                      message:
+                        'Invalid YouTube embed URL! Use format: https://www.youtube.com/embed/xyz123',
+                    },
+                  })}
+                />
+                {errors.video_url && (
+                  <p className='mt-1 text-xs text-red-500'>
+                    {errors.video_url.message as string}
+                  </p>
+                )}
+              </div>
+              <div className='mt-2'>
+                <Input
+                  label='Regular Price'
+                  placeholder='20$'
+                  {...register('regular_price', {
+                    valueAsNumber: true,
+                    min: {
+                      value: 1,
+                      message: 'Price must be at least 1',
+                    },
+                    validate: (value) =>
+                      !isNaN(value) || 'Only numbers are allowed!',
+                  })}
+                />
+                {errors.regular_price && (
+                  <p className='mt-1 text-xs text-red-500'>
+                    {errors.regular_price.message as string}
+                  </p>
+                )}
+              </div>
+              <div className='mt-2'>
+                <Input
+                  label='Sale Price'
+                  placeholder='15$'
+                  {...register('sale_price', {
+                    required: 'Sale price is required!',
+                    valueAsNumber: true,
+                    min: {
+                      value: 1,
+                      message: 'Sale Price must be at least 1',
+                    },
+                    validate: (value) => {
+                      if (isNaN(value)) return 'Only numbers are allowed!';
+                      if (regularPrice && value >= regularPrice) {
+                        return 'Sale price must be less than Regulare price';
+                      }
+                      return true;
+                    },
+                  })}
+                />
+                {errors.sale_price && (
+                  <p className='mt-1 text-xs text-red-500'>
+                    {errors.sale_price.message as string}
+                  </p>
+                )}
+              </div>
+              <div className='mt-2'>
+                <Input
+                  label='Stock *'
+                  placeholder='100'
+                  {...register('stock', {
+                    required: 'Stock is required!',
+                    valueAsNumber: true,
+                    min: {
+                      value: 1,
+                      message: 'Stock must be at least 1',
+                    },
+                    max: {
+                      value: 1000,
+                      message: 'Stock cannot exceed 1000',
+                    },
+                    validate: (value) => {
+                      if (!isNaN(value)) return 'Only numbers are allowed!';
+                      if (!Number.isInteger(value)) {
+                        return 'Stock must be a whole number';
+                      }
+                      return true;
+                    },
+                  })}
+                />
+                {errors.stock && (
+                  <p className='mt-1 text-xs text-red-500'>
+                    {errors.stock.message as string}
+                  </p>
+                )}
+              </div>
+              <div className='mt-2'>
+                <SizeSelector control={control} errors={errors} />
+              </div>
+              <div className='mt-3'>
+                <label className='mb-1 block font-semibold text-gray-300'>
+                  Select Discount Codes (optional)
+                </label>
+              </div>
             </div>
           </div>
         </div>
+      </div>
+      <div className='mt-6 flex justify-end gap-3'>
+        {isChanged && (
+          <button
+            type='button'
+            onClick={handleSaveDraft}
+            className='rounded-md bg-gray-700 px-4 py-2 text-white'
+          >
+            Save Draft
+          </button>
+        )}
+        <button
+          type='submit'
+          className='rounded-md bg-blue-600 px-4 py-2 text-white'
+          disabled={loading}
+        >
+          {loading ? 'Creating...' : 'Create'}
+        </button>
       </div>
     </form>
   );
