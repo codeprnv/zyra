@@ -1,6 +1,6 @@
 import { Controller } from 'react-hook-form';
 
-const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXL'];
+const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const SizeSelector = ({ control, errors }: any) => {
@@ -11,7 +11,7 @@ const SizeSelector = ({ control, errors }: any) => {
         name='sizes'
         control={control}
         render={({ field }) => (
-          <div className='flex flex-wrap gap-2'>
+          <div className='flex flex-wrap gap-2' >
             {sizes.map((size) => {
               const isSelected = (field.value || []).includes(size);
 
