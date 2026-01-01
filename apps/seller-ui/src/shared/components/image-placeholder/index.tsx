@@ -10,6 +10,9 @@ const ImagePlaceholder = ({
   defaultImage = null,
   index = null,
   setOpenImageModal,
+  setSelectedImage,
+  images,
+  pictureUploadingLoader,
 }: {
   size: string;
   small?: boolean;
@@ -19,6 +22,9 @@ const ImagePlaceholder = ({
   setOpenImageModal: (openImageModal: boolean) => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   index?: any;
+  setSelectedImage: (e: string) => void;
+  images: any;
+    pictureUploadingLoader: boolean;
 }) => {
   const [imagePreview, setImagePreview] = useState<string | null>(defaultImage);
 
@@ -46,14 +52,19 @@ const ImagePlaceholder = ({
         <>
           <button
             type='button'
+            disabled={pictureUploadingLoader}
             onClick={() => onRemove?.(index)}
             className='absolute right-3 top-3 rounded-lg bg-red-600 p-2 shadow-lg'
           >
             <X size={16} />
           </button>
           <button
+            disabled={pictureUploadingLoader}
             className='bg-blue-5000 absolute right-[70px] top-3 rounded-lg p-2 shadow-lg'
-            onClick={() => setOpenImageModal(true)}
+            onClick={() => {
+              setOpenImageModal(true);
+              setSelectedImage(images[index].file_url);
+            }}
           >
             <WandSparkles size={16} />
           </button>

@@ -1,7 +1,9 @@
 'use client';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Wand, X } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import ColorSelector from 'packages/components/color-selector';
 import CustomProperties from 'packages/components/custom-properties';
 import CustomSpecifications from 'packages/components/custom-specifications';
@@ -10,8 +12,15 @@ import RichTextEditor from 'packages/components/rich-text-editor';
 import SizeSelector from 'packages/components/size-selector';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
+import toast from 'react-hot-toast';
 import ImagePlaceholder from '../../../../shared/components/image-placeholder';
+import { enhancements } from '../../../../utils/ai-enhancements';
 import axiosInstance from '../../../../utils/axiosInstance';
+
+interface UploadedImage {
+  fileId: string;
+  file_url: string;
+}
 
 const Page = () => {
   const {
@@ -25,8 +34,14 @@ const Page = () => {
 
   const [openImageModal, setOpenImageModal] = useState(false);
   const [isChanged, setIsChanged] = useState(false);
-  const [images, setImages] = useState<(File | null)[]>([null]);
+  const [images, setImages] = useState<(UploadedImage | null)[]>([null]);
   const [loading, setLoading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string>('');
+  const [pictureUploadingLoader, setPictureUploadingLoader] = useState(false);
+  const [activeEffect, setActiveEffect] = useState<string | null>('');
+  const [processing, setProcessing] = useState(false);
+
+  const router = useRouter();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['categories'],
@@ -42,6 +57,14 @@ const Page = () => {
     retry: 2,
   });
 
+  const { data: discountCodes = [], isLoading: discountLoading } = useQuery({
+    queryKey: ['shop-discounts'],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/product/api/get-discount-codes');
+      return res?.data?.discount_codes || [];
+    },
+  });
+
   const categories = data?.categories || [];
   const subCategoriesData = data?.subCategories || [];
 
@@ -52,51 +75,106 @@ const Page = () => {
     return selectedCategory ? subCategoriesData[selectedCategory] || [] : [];
   }, [selectedCategory, subCategoriesData]);
 
-  console.log(
-    'Categories: ',
-    categories,
-    '\nSubcategories: ',
-    subCategoriesData
-  );
+  // console.log(
+  //   'Categories: ',
+  //   categories,
+  //   '\nSubcategories: ',
+  //   subCategoriesData
+  // );
 
-  const onSubmit = (data: any) => {
-    console.log('Data: ', data);
-  };
-
-  const handleImageChange = (file: File | null, index: number) => {
-    const updatedImages = [...images];
-
-    updatedImages[index] = file;
-
-    if (index === images.length - 1 && images.length < 8) {
-      updatedImages.push(null);
+  const onSubmit = async (data: any) => {
+    try {
+      setLoading(true);
+      await axiosInstance.post('/product/api/create-product', data);
+      router.push('/dashboard/all-products');
+    } catch (error: any) {
+      toast.error(error?.data?.message);
+      console.error('Error creating the product: ', error);
+    } finally {
+      setLoading(false);
     }
-
-    setImages(updatedImages);
-    setValue('images', updatedImages);
   };
 
-  const handleRemoveImage = (index: number) => {
-    setImages((prevImages) => {
+  const convertFileToBase64 = (file: File) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+    });
+  };
+
+  const handleImageChange = async (file: File | null, index: number) => {
+    if (!file) return;
+    setPictureUploadingLoader(true);
+    try {
+      const fileName = await convertFileToBase64(file);
+      const response = await axiosInstance.post(
+        `/product/api/upload-product-image`,
+        { fileName }
+      );
       const updatedImages = [...images];
+      const uploadedImage: UploadedImage = {
+        fileId: response.data.fileId,
+        file_url: response.data.file_url,
+      };
+      updatedImages[index] = uploadedImage;
 
-      if (index === -1) {
-        updatedImages[0] = null;
-      } else {
-        updatedImages.splice(index, 1);
+      if (index === images.length - 1 && updatedImages.length < 8) {
+        updatedImages.push(null);
       }
+      setImages(updatedImages);
+      setValue('images', updatedImages);
+    } catch (error) {
+      console.error('Error creating base64 of image: ', error);
+    } finally {
+      setPictureUploadingLoader(false);
+    }
+  };
 
+  const handleRemoveImage = async (index: number) => {
+    try {
+      const updatedImages = [...images];
+      const imageToDelete = updatedImages[index];
+
+      if (imageToDelete && typeof imageToDelete === 'object') {
+        // delete the picture
+        await axiosInstance.delete(`/product/api/delete-product-image`, {
+          data: {
+            fileId: imageToDelete.fileId,
+          },
+        });
+      }
+      updatedImages.splice(index, 1);
+
+      // Add null placeholder
       if (!updatedImages.includes(null) && updatedImages.length < 8) {
         updatedImages.push(null);
       }
-
-      return updatedImages;
-    });
-    setValue('images', images);
+      setImages(updatedImages);
+      setValue('images', updatedImages);
+    } catch (error) {
+      console.error('Error in deleting the image: ', error);
+    }
   };
 
   const handleSaveDraft = () => {
     console.log('');
+  };
+
+  const applyTransformation = async (transformation: string) => {
+    if (!selectedImage || processing) return;
+    setProcessing(true);
+    setActiveEffect(transformation);
+
+    try {
+      const transformedUrl = `${selectedImage}?tr=${transformation}`;
+      setSelectedImage(transformedUrl);
+    } catch (error) {
+      console.error('Error in apply transformations: ', error);
+    } finally {
+      setProcessing(false);
+    }
   };
 
   return (
@@ -125,6 +203,9 @@ const Page = () => {
               size='765 x 850'
               small={false}
               index={0}
+              setSelectedImage={setSelectedImage}
+              images={images}
+              pictureUploadingLoader={pictureUploadingLoader}
               onImageChange={handleImageChange}
               onRemove={handleRemoveImage}
             />
@@ -138,6 +219,9 @@ const Page = () => {
                 small={true}
                 index={index + 1}
                 onImageChange={handleImageChange}
+                setSelectedImage={setSelectedImage}
+                pictureUploadingLoader={pictureUploadingLoader}
+                images={images}
                 onRemove={handleRemoveImage}
               />
             ))}
@@ -166,7 +250,7 @@ const Page = () => {
                   cols={10}
                   label='Short Description * (Max 150 words)'
                   placeholder='Enter product description for quick view'
-                  {...register('description', {
+                  {...register('short_description', {
                     required: 'Description is required!',
                     validate: (value) => {
                       const wordCount = value.trim().split(/\s+/).length;
@@ -329,7 +413,7 @@ const Page = () => {
                   <p className='text-red-500'>Failed to load subcategories</p>
                 ) : (
                   <Controller
-                    name='subcategory'
+                    name='subCategory'
                     control={control}
                     rules={{ required: 'SubCategory is required!' }}
                     render={({ field }) => (
@@ -369,9 +453,22 @@ const Page = () => {
                   rules={{
                     required: 'Detailed Description is required!',
                     validate: (value) => {
-                      const wordCount = value
-                        ?.split(/\s+/)
-                        .filter((word: string) => word).length;
+                      // Create a temporary DOM element to decode HTML entities and strip tags
+                      const div = document.createElement('div');
+                      div.innerHTML = value || '';
+
+                      // Get decoded plain text (converts &nbsp; to actual spaces)
+                      const plainText = (
+                        div.textContent ||
+                        div.innerText ||
+                        ''
+                      ).trim();
+
+                      // Count words
+                      const wordCount = plainText
+                        .split(/\s+/)
+                        .filter((word: string) => word.length > 0).length;
+
                       return (
                         wordCount >= 100 ||
                         'Description must be at least 100 words!'
@@ -385,6 +482,7 @@ const Page = () => {
                     />
                   )}
                 />
+
                 {errors.detailed_description && (
                   <p className='mt-1 text-xs text-red-500'>
                     {errors.detailed_description.message as string}
@@ -457,6 +555,7 @@ const Page = () => {
               </div>
               <div className='mt-2'>
                 <Input
+                  type='number'
                   label='Stock *'
                   placeholder='100'
                   {...register('stock', {
@@ -471,7 +570,7 @@ const Page = () => {
                       message: 'Stock cannot exceed 1000',
                     },
                     validate: (value) => {
-                      if (!isNaN(value)) return 'Only numbers are allowed!';
+                      if (isNaN(value)) return 'Only numbers are allowed!';
                       if (!Number.isInteger(value)) {
                         return 'Stock must be a whole number';
                       }
@@ -492,11 +591,83 @@ const Page = () => {
                 <label className='mb-1 block font-semibold text-gray-300'>
                   Select Discount Codes (optional)
                 </label>
+                {discountLoading ? (
+                  <p className='text-gray-400'>Loading discount codes...</p>
+                ) : (
+                  <div className='flex flex-wrap gap-2'>
+                    {discountCodes?.map((code: any) => (
+                      <button
+                        key={code}
+                        type='button'
+                        className={`rounded-md border px-3 py-1 text-sm font-semibold ${watch('discountCodes')?.includes(code.id) ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700'}`}
+                        onClick={() => {
+                          const currentSelection = watch('discountCodes') || [];
+                          const updatedSelection = currentSelection?.includes(
+                            code.id
+                          )
+                            ? currentSelection.filter(
+                                (id: string) => id !== code.id
+                              )
+                            : [...currentSelection, code.id];
+                          setValue('discountCodes', updatedSelection);
+                        }}
+                      >
+                        {code?.public_name} ({code?.discountValue})
+                        {code.discountType === 'percentage' ? '%' : '$'}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
       </div>
+      {openImageModal && (
+        <div className='fixed left-0 top-0 z-50 flex h-full w-full items-center justify-center bg-black bg-opacity-60'>
+          <div className='w-[450px] rounded-lg bg-gray-800 p-6 text-white'>
+            <div className='mb-4 flex items-center justify-between pb-3'>
+              <h2 className='text-lg font-semibold'>Enhance Product Image</h2>
+              <X
+                size={20}
+                className='cursor-pointer'
+                onClick={() => setOpenImageModal(!openImageModal)}
+              />
+            </div>
+            <div className='relative h-[250px] w-full overflow-hidden rounded-md border border-gray-600'>
+              <Image
+                src={selectedImage}
+                alt='product-image'
+                layout='fill'
+                objectFit='contain'
+                unoptimized
+                // width={250}
+                // height={250}
+              />
+            </div>
+            {selectedImage && (
+              <div className='mt-4 space-y-2'>
+                <h3 className='text-sm font-semibold text-white'>
+                  AI Enhancements
+                </h3>
+                <div className='grid max-h-[250px] grid-cols-2 gap-2 overflow-auto'>
+                  {enhancements?.map(({ label, effect }) => (
+                    <button
+                      key={effect}
+                      className={`flex items-center gap-2 rounded-md p-2 ${activeEffect === effect ? 'bg-blue-600 text-white' : 'bg-gray-700 hover:bg-gray-600'}`}
+                      onClick={() => applyTransformation(effect)}
+                      disabled={processing}
+                    >
+                      <Wand size={18} />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       <div className='mt-6 flex justify-end gap-3'>
         {isChanged && (
           <button
