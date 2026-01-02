@@ -14,6 +14,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
 import { default as swaggerUi } from 'swagger-ui-express';
+import './jobs/product-cron-job';
 
 import ProductRouter from './routes/product.routes';
 const swaggerDocument = require('./swagger-output.json');

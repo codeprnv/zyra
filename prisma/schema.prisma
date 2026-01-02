@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -14,16 +8,25 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// For user/shop avatars (one-to-one)
+model avatars {
+  id      String  @id @default(auto()) @map("_id") @db.ObjectId
+  file_id String
+  url     String
+  userId  String? @unique @db.ObjectId
+  user    users?  @relation(fields: [userId], references: [id])
+  shopId  String? @unique @db.ObjectId
+  shop    shops?  @relation(fields: [shopId], references: [id])
+}
+
+// For product images ONLY (one-to-many)
 model images {
-  id         String    @id @default(auto()) @map("_id") @db.ObjectId
-  file_id    String
-  url        String
-  userId     String?   @unique @db.ObjectId
-  users      users?    @relation(fields: [userId], references: [id])
-  shopId     String?   @unique @db.ObjectId
-  shops      shops?    @relation(fields: [shopId], references: [id])
-  products   products? @relation(fields: [productsId], references: [id])
-  productsId String?   @db.ObjectId
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  file_id   String
+  url       String
+  productId String   @db.ObjectId // ✅ Only connect to products
+  product   products @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now())
 }
 
 model users {
@@ -32,10 +35,11 @@ model users {
   email       String        @unique
   password    String?
   following   String[]
-  avatar      images?
+  avatar      avatars? // ✅ Only avatar relation
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   shopReviews shopReviews[]
+  // ❌ Removed images relation
 }
 
 model shopReviews {
@@ -47,7 +51,7 @@ model shopReviews {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   shopId    String?  @db.ObjectId
-  shops     shops?   @relation(fields: [shopId], references: [id])
+  shop     shops?   @relation(fields: [shopId], references: [id])
 }
 
 model shops {
@@ -55,7 +59,7 @@ model shops {
   name          String
   bio           String?
   category      String
-  avatar        images?
+  avatar        avatars? // ✅ Only avatar relation
   coverBanner   String?
   address       String
   opening_hours String?
@@ -65,11 +69,10 @@ model shops {
   reviews       shopReviews[]
   sellerId      String        @unique @db.ObjectId
   sellers       sellers       @relation(fields: [sellerId], references: [id])
-  //  products products @relation(fields: [productsId], references: [id])
-  //  productsId String? @db.ObjectId
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   products      products[]
+  // ❌ Removed images relation
 }
 
 model sellers {
@@ -117,7 +120,7 @@ model products {
   subCategory           String
   short_description     String
   detailed_description  String
-  images                images[]
+  images                images[] // ✅ One-to-many with images
   video_url             String?
   tags                  String[]
   brand                 String?
@@ -139,6 +142,6 @@ model products {
   deletedAt             DateTime?
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
-  shopsId               String        @db.ObjectId
-  shops                 shops         @relation(fields: [shopsId], references: [id])
+  shopId                String?       @db.ObjectId
+  shop                 shops?        @relation(fields: [shopId], references: [id])
 }

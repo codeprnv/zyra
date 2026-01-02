@@ -198,8 +198,6 @@ export const createProduct = async (
       images = [],
     } = req.body;
 
-    console.log('Data: ', title);
-
     if (
       !title ||
       !slug ||
@@ -212,19 +210,6 @@ export const createProduct = async (
       !stock ||
       !regular_price
     ) {
-      console.log({
-        title: title || 'MISSING',
-        slug: slug || 'MISSING',
-        short_description: short_description || 'MISSING',
-        category: category || 'MISSING',
-        subCategory: subCategory || 'MISSING',
-        sale_price: sale_price || 'MISSING',
-        images: images || 'MISSING',
-        tags: tags || 'MISSING',
-        stock: stock || 'MISSING',
-        regular_price: regular_price || 'MISSING',
-      });
-
       throw new ValidationError('Missing required fields!');
     }
 
@@ -259,7 +244,7 @@ export const createProduct = async (
         category,
         subCategory,
         colors: colors || [],
-        discountCodes: discountCodes?.map((codeId: string) => codeId) || '',
+        discount_codes: discountCodes?.map((codeId: string) => codeId) || '',
         sizes: sizes || [],
         stock: parseInt(stock),
         sale_price: parseFloat(sale_price),
@@ -284,5 +269,125 @@ export const createProduct = async (
     });
   } catch (error) {
     next(error);
+  }
+};
+
+export const getShopProducts = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const products = await prisma.products.findMany({
+      where: {
+        shopId: req?.seller?.shop?.id,
+      },
+      include: {
+        images: true,
+      },
+    });
+    return res.status(201).json({
+      success: true,
+      products,
+    });
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const deleteProduct = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { productId } = req.params;
+    const sellerId = req.seller?.shop?.id;
+
+    const product = await prisma.products.findUnique({
+      where: {
+        id: productId,
+      },
+      select: { id: true, shopId: true, isDeleted: true },
+    });
+
+    if (!product) {
+      throw new ValidationError('Product not found!');
+    }
+
+    if (product.shopId !== sellerId) {
+      throw new ValidationError('Unauthorized action!');
+    }
+
+    if (product.isDeleted) {
+      throw new ValidationError('Product is already deleted!');
+    }
+
+    const deletedProduct = await prisma.products.update({
+      where: {
+        id: productId,
+      },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      },
+    });
+
+    return res.status(200).json({
+      message:
+        'Product is scheduled for deletion in 24 hours. You can restore it within this time.',
+      deletedAt: deletedProduct.deletedAt,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const restoreProduct = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { productId } = req.params;
+    const sellerId = req.seller?.shop?.id;
+
+    const product = await prisma.products.findUnique({
+      where: {
+        id: productId,
+      },
+      select: { id: true, shopId: true, isDeleted: true },
+    });
+
+    if (!product) {
+      throw new ValidationError('Product not found!');
+    }
+
+    if (product.shopId !== sellerId) {
+      throw new ValidationError('Unauthorized action!');
+    }
+
+    if (!product.isDeleted) {
+      return res
+        .status(400)
+        .json({ message: 'Product is not in deleted state!' });
+    }
+
+    await prisma.products.update({
+      where: {
+        id: productId,
+      },
+      data: {
+        isDeleted: false,
+        deletedAt: null,
+      },
+    });
+
+    return res.status(200).json({
+      message: 'Product successfully restored!',
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error restoring product', error });
   }
 };
