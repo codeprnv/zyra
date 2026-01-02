@@ -305,7 +305,7 @@ const Page = () => {
                     pattern: {
                       value: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
                       message:
-                        'Invalid slug format! Use only lowercase letters, numbers and characters',
+                        'Invalid slug format! Use only lowercase letters, numbers and hyphens',
                     },
                     minLength: {
                       value: 3,
