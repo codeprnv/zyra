@@ -1,23 +1,19 @@
 'use client';
-import {
-  AlignLeft,
-  ChevronDown,
-  HeartIcon,
-  ShoppingCart,
-} from 'lucide-react';
+import { AlignLeft, ChevronDown, HeartIcon, ShoppingCart } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
 import { navItems } from '../../../../configs/constants';
 import user_profile from '../../../assets/images/user-profile.png';
 import useUser from '../../../hooks/useUser';
+import { useStore } from '../../../store';
 
 const HeaderBottom = () => {
   const [show, setShow] = useState<boolean>(false);
   const [isSticky, setIsSticky] = useState<boolean>(false);
-  const { user,isLoading } = useUser();
-  
-  console.log(user)
+  const { user, isLoading } = useUser();
+  const wishlist = useStore((state: any) => state.wishlist);
+  const cart = useStore((state: any) => state.cart);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -117,13 +113,17 @@ const HeaderBottom = () => {
                 <Link href={'/wishlist'} className='relative'>
                   <HeartIcon />
                   <div className='absolute -right-[10px] -top-[10px] flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-red-500'>
-                    <span className='text-sm font-medium text-white'>0</span>
+                    <span className='text-sm font-medium text-white'>
+                      {wishlist?.length || 0}
+                    </span>
                   </div>
                 </Link>
                 <Link href={'/cart'} className='relative'>
                   <ShoppingCart />
                   <div className='absolute -right-[10px] -top-[10px] flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-red-500 p-1'>
-                    <span className='text-sm font-medium text-white'>9+</span>
+                    <span className='text-sm font-medium text-white'>
+                      {cart?.length || 0}
+                    </span>
                   </div>
                 </Link>
               </div>

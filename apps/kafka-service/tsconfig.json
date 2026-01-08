@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "files": [],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.json",
+    "../../packages/**/*.ts",
+    "../../packages/**/*.json",
+    "../../generated/prisma/**/*.ts"
+  ],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    }
+  ]
+}

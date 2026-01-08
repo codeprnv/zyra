@@ -19,7 +19,7 @@
       "@/*": ["./src/*"]
     },
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": "../../",
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
   },
   "include": [
@@ -29,7 +29,11 @@
     "src/**/*.jsx",
     "../../apps/user-ui/.next/types/**/*.ts",
     "../../dist/apps/user-ui/.next/types/**/*.ts",
-    "next-env.d.ts"
+    "next-env.d.ts",
+    "src/**/*.json",
+    "../../packages/**/*.ts",
+    "../../packages/**/*.json",
+    "../../generated/prisma/**/*.ts"
   ],
   "exclude": [
     "out-tsc",

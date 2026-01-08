@@ -6,6 +6,7 @@ import {
 import { imagekit } from '@packages/libs/imagekit';
 import prisma from '@packages/libs/prisma';
 import type { NextFunction, Request, Response } from 'express';
+import { Prisma } from 'generated/prisma/client';
 
 // Get product categories
 export const getCategories = async (
@@ -389,5 +390,96 @@ export const restoreProduct = async (
     });
   } catch (error) {
     return res.status(500).json({ message: 'Error restoring product', error });
+  }
+};
+
+export const getAllProducts = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const skip = (page - 1) * limit;
+    const type = req.query.type;
+
+    // const baseFilter = {
+    //   AND: [{ starting_date: null }, { ending_date: null }],
+    // };
+
+    const orderBy: Prisma.productsOrderByWithRelationInput =
+      type === 'latest'
+        ? { createdAt: 'desc' as Prisma.SortOrder }
+        : { totalSales: 'desc' as Prisma.SortOrder };
+
+    const products = await prisma.products.findMany({
+      skip,
+      take: limit,
+      include: {
+        images: true,
+        shop: true,
+      },
+      // where: baseFilter,
+      orderBy: {
+        totalSales: 'desc',
+      },
+    });
+
+    const total = await prisma.products.count();
+    const top10Products = await prisma.products.findMany({
+      take: 10,
+      // where: baseFilter,
+      orderBy: {
+        totalSales: 'desc',
+      },
+    });
+
+    // const [products, total, top10Products] = await Promise.all([]);
+
+    // console.log(
+    //   'Products: ',
+    //   products,
+    //   'Total: ',
+    //   total,
+    //   'top10products: ',
+    //   top10Products
+    // );
+
+    res.status(200).json({
+      products,
+      top10By: type === 'latest' ? 'latest' : 'topSales',
+      top10Products,
+      total,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getProductDetails = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const product = await prisma.products.findUnique({
+      where: {
+        slug: req.params.slug
+      },
+      include: {
+        images: true,
+        shop: true
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      product
+    })
+  } catch (error) {
+    next(error);
   }
 };
