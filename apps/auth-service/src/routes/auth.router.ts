@@ -8,6 +8,7 @@ import {
   getUser,
   loginSeller,
   loginUser,
+  logoutUser,
   refreshToken,
   registerSeller,
   resetUserPassword,
@@ -34,5 +35,6 @@ router.post('/create-shop', createShop);
 router.post('/create-stripe-link', createStripeConnectLink);
 router.post('/login-seller', loginSeller);
 router.get('/logged-in-seller', isAuthenticated, isSeller, getSeller);
+router.get('/logout-user', logoutUser)
 
 export default router;

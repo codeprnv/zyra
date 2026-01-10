@@ -507,3 +507,23 @@ export const getSeller = async (
     next(error);
   }
 };
+
+export const logoutUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // Clear user cookies only
+    res.clearCookie('refresh_token');
+    res.clearCookie('access_token');
+
+
+    res.status(200).json({
+      message: 'Logout Successful!',
+      user: null,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

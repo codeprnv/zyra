@@ -41,6 +41,7 @@ model users {
   shopReviews   shopReviews[]
   // ❌ Removed images relation
   userAnalytics userAnalytics[]
+  orders        orders[]
 }
 
 model shopReviews {
@@ -73,8 +74,9 @@ model shops {
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
   products         products[]
-  // ❌ Removed images relation
+  // followers        Int?               @default(0)
   productAnalytics productAnalytics[]
+  orders           orders[]
 }
 
 model sellers {
@@ -151,22 +153,22 @@ model products {
 }
 
 model userAnalytics {
-  id           String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId       String?   @db.ObjectId @unique
-  users        users?    @relation(fields: [userId], references: [id])
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String?   @unique @db.ObjectId
+  users         users?    @relation(fields: [userId], references: [id])
   lastVisitedAt DateTime? @default(now())
-  lastTrained  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  country      String?
-  city         String?
-  device       String?
-  actions      Json[]    @default([])
+  lastTrained   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  country       String?
+  city          String?
+  device        String?
+  actions       Json[]    @default([])
 }
 
 model productAnalytics {
   id           String    @id @default(auto()) @map("_id") @db.ObjectId
-  productId    String?   @db.ObjectId @unique
+  productId    String?   @unique @db.ObjectId
   products     products? @relation(fields: [productId], references: [id])
   shopId       String?   @db.ObjectId
   shops        shops?    @relation(fields: [shopId], references: [id])
@@ -175,4 +177,30 @@ model productAnalytics {
   wishlistAdds Int?      @default(0)
   purchases    Int?      @default(0)
   lastViewedAt DateTime  @default(now())
+}
+
+model orders {
+  id              String  @id @default(auto()) @map("_id") @db.ObjectId
+  orderNumber     String  @unique @default("ORD-") // Generate unique prefix
+  shopId          String  @db.ObjectId
+  shop            shops   @relation(fields: [shopId], references: [id])
+  userId          String  @db.ObjectId
+  user            users?  @relation(fields: [userId], references: [id])
+  products        Json[]  @default([]) // ✅ Empty array by default
+  total           Float   @default(0) // ✅ 0 total
+  status          String  @default("pending")
+  paymentStatus   String  @default("pending")
+  shippingAddress Json    @default("{}") // ✅ Empty object
+  paymentMethod   String? @default("COD") // ✅ Default payment
+  discountApplied Float?  @default(0)
+  taxAmount       Float?  @default(0)
+  shippingAmount  Float?  @default(0)
+  notes           String? @default("")
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deliveredAt DateTime?
+  cancelledAt DateTime?
+
+  @@map("orders")
 }

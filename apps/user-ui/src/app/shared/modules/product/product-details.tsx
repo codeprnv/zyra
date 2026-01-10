@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   TransformComponent,
   TransformWrapper,
@@ -19,6 +19,9 @@ import useDeviceTracking from '../../../hooks/useDeviceTracking';
 import useLocationTracking from '../../../hooks/useLocationTracking';
 import useUser from '../../../hooks/useUser';
 import { useStore } from '../../../store';
+import axiosInstance from '../../../utils/axiosInstance';
+import ProductCard from '../../components/cards/product-card';
+import ProductDescription from '../../components/product/product-description';
 import Ratings from '../../components/ratings';
 
 const Controls = () => {
@@ -90,6 +93,25 @@ const ProductDetails = ({ productDetails }: { productDetails: any }) => {
       productDetails.regular_price) *
       100
   );
+
+  const fetchFilteredProducts = async () => {
+    try {
+      const query = new URLSearchParams();
+      query.set("priceRange", priceRange.join(","))
+      query.set("page", "1")
+      query.set('limit', "5")
+      
+      const res = await axiosInstance.get(`/product/api/get-filtered-products?${query.toString()}`)
+
+      setRecommendedProducts(res.data.products)
+    } catch (error) {
+      console.error('Error fetching filtered products: ', error)
+    }
+  }
+
+  useEffect(() => {
+    fetchFilteredProducts()
+  },[priceRange])
 
   return (
     <div className='w-full bg-[#f5f5f5] py-5'>
@@ -402,12 +424,27 @@ const ProductDetails = ({ productDetails }: { productDetails: any }) => {
           <h3 className='text-lg font-semibold'>
             Product Details of {productDetails?.title}
           </h3>
-          <div
-            className='max-w-[90vw] text-wrap text-slate-200'
-            dangerouslySetInnerHTML={{
-              __html: productDetails?.detailed_description,
-            }}
+          <ProductDescription
+            productDetails={productDetails }
           />
+        </div>
+      </div>
+      <div className='mx-auto w-[90%] lg:w-[80%]'>
+        <div className='mt-5 h-full min-h-[50vh] bg-white pt-5'>
+          <h3 className='text-lg font-semibold'>
+            Ratings & Reviews of {productDetails?.title}
+          </h3>
+          <p className='pt-14 text-center'>No reviews available yet</p>
+        </div>
+      </div>
+      <div className='mx-auto w-[90%] lg:w-[80%]'>
+        <div className='my-5 h-full w-full p-5'>
+          <h3 className='mb-2 text-xl font-semibold'>You may also like</h3>
+          <div className='m-auto grid grid-cols-1 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'>
+            {recommendedProducts?.map((i: any) => (
+              <ProductCard key={i.id} product={i} />
+            ))}
+          </div>
         </div>
       </div>
     </div>

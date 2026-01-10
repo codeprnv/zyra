@@ -10,7 +10,7 @@
           "{workspaceRoot}/generated/prisma"
         ],
         "options": {
-          "command": "npx prisma generate",
+          "command": "rm -rf /generated && npx prisma generate",
           "cwd": "{workspaceRoot}"
         }
       },
