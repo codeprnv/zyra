@@ -42,6 +42,7 @@ model users {
   // ❌ Removed images relation
   userAnalytics userAnalytics[]
   orders        orders[]
+  addresses     address[]
 }
 
 model shopReviews {
@@ -177,30 +178,90 @@ model productAnalytics {
   wishlistAdds Int?      @default(0)
   purchases    Int?      @default(0)
   lastViewedAt DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model shopAnalytics {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  totalVisitors Int      @default(0)
+  countryStats  Json?
+  cityStats     Json?
+  deviceStats   Json?
+  lastVisitedAt DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model uniqueShopVisitors {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  shopId    String   @db.ObjectId
+  userId    String   @db.ObjectId
+  visitedAt DateTime @default(now())
+
+  @@unique([shopId, userId])
 }
 
 model orders {
-  id              String  @id @default(auto()) @map("_id") @db.ObjectId
-  orderNumber     String  @unique @default("ORD-") // Generate unique prefix
-  shopId          String  @db.ObjectId
-  shop            shops   @relation(fields: [shopId], references: [id])
-  userId          String  @db.ObjectId
-  user            users?  @relation(fields: [userId], references: [id])
-  products        Json[]  @default([]) // ✅ Empty array by default
-  total           Float   @default(0) // ✅ 0 total
-  status          String  @default("pending")
-  paymentStatus   String  @default("pending")
-  shippingAddress Json    @default("{}") // ✅ Empty object
-  paymentMethod   String? @default("COD") // ✅ Default payment
-  discountApplied Float?  @default(0)
-  taxAmount       Float?  @default(0)
-  shippingAmount  Float?  @default(0)
-  notes           String? @default("")
+  id                String       @id @default(auto()) @map("_id") @db.ObjectId
+  // orderNumber     String  @unique @default("ORD-") // Generate unique prefix
+  shopId            String       @db.ObjectId
+  shop              shops        @relation(fields: [shopId], references: [id])
+  userId            String       @db.ObjectId
+  user              users?       @relation(fields: [userId], references: [id])
+  // products        Json[]  @default([]) // ✅ Empty array by default
+  total             Float        @default(0) // ✅ 0 total
+  status            String       @default("pending")
+  // paymentStatus   String  @default("pending")
+  // shippingAddress Json    @default("{}") // ✅ Empty object
+  // paymentMethod   String? @default("COD") // ✅ Default payment
+  // discountApplied Float?  @default(0)
+  // taxAmount       Float?  @default(0)
+  // shippingAmount  Float?  @default(0)
+  // notes           String? @default("")
+  shippingAddressId String?
+  couponCode        String?
+  discountAmount    Float?
+  deliveryStatus    String       @default("Ordered")
+  items             orderItems[] @relation("OrderItemsRelation")
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deliveredAt DateTime?
-  cancelledAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // deliveredAt DateTime?
+  // cancelledAt DateTime?
 
-  @@map("orders")
+  // @@map("orders")
+}
+
+model orderItems {
+  id              String @id @default(auto()) @map("_id") @db.ObjectId
+  orderId         String @db.ObjectId
+  productId       String
+  quantity        Int
+  price           Float
+  selectedOptions Json?
+
+  orders    orders   @relation(fields: [orderId], references: [id], name: "OrderItemsRelation")
+  createdAt DateTime @default(now())
+}
+
+enum addressType {
+  Home
+  Work
+  Other
+}
+
+model address {
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String      @db.ObjectId
+  user      users?      @relation(fields: [userId], references: [id])
+  label     addressType
+  name      String      @default("")
+  street    String      @default("")
+  city      String      @default("")
+  zip       String      @default("")
+  country   String      @default("India")
+  isDefault Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 }

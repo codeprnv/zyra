@@ -1,6 +1,10 @@
 // Register new user
 
-import { AuthError, ValidationError } from '@packages/error-handler/index.js';
+import {
+  AuthError,
+  NotFoundError,
+  ValidationError,
+} from '@packages/error-handler/index.js';
 import prisma from '@packages/libs/prisma/index.js';
 import bcrypt from 'bcryptjs';
 import type { NextFunction, Request, Response } from 'express';
@@ -192,7 +196,7 @@ export const refreshToken = async (
       setCookie(res, 'seller_access_token', newAccessToken);
     }
 
-    req.role = decoded.role
+    req.role = decoded.role;
 
     return res.status(200).json({ success: true });
   } catch (error) {
@@ -462,8 +466,8 @@ export const loginSeller = async (
       throw new ValidationError('Invalid email or password!');
     }
 
-    res.clearCookie("access_token")
-    res.clearCookie("refresh_token")
+    res.clearCookie('access_token');
+    res.clearCookie('refresh_token');
 
     // Generate access token and refresh token
 
@@ -491,7 +495,7 @@ export const loginSeller = async (
 };
 
 // Get logged in Seller
- 
+
 export const getSeller = async (
   req: any,
   res: Response,
@@ -518,10 +522,121 @@ export const logoutUser = async (
     res.clearCookie('refresh_token');
     res.clearCookie('access_token');
 
-
     res.status(200).json({
       message: 'Logout Successful!',
       user: null,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const addUserAddress = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user?.id;
+    const { label, name, street, city, zip, country, isDefault } = req.body;
+
+    if (!label || !name || !street || !city || !zip || !country) {
+      throw new ValidationError('All field are required!');
+    }
+
+    if (isDefault) {
+      await prisma.address.updateMany({
+        where: {
+          userId,
+          isDefault: true,
+        },
+        data: {
+          isDefault: false,
+        },
+      });
+    }
+
+    const newAddress = await prisma.address.create({
+      data: {
+        userId,
+        label,
+        name,
+        street,
+        city,
+        zip,
+        country,
+        isDefault,
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      address: newAddress,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteUserAddress = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user?.id;
+    const { addressId } = req.params;
+
+    if (!addressId) {
+      throw new ValidationError('Address ID is required!');
+    }
+
+    const existingAddress = await prisma.address.findFirst({
+      where: {
+        id: addressId,
+        userId,
+      },
+    });
+
+    if (!existingAddress) {
+      throw new NotFoundError('Address not found or unauthorized!');
+    }
+
+    await prisma.address.delete({
+      where: {
+        id: addressId,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Address deleted successfully!',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUserAddresses = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user?.id;
+
+    const addresses = await prisma.address.findMany({
+      where: {
+        userId,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      addresses,
     });
   } catch (error) {
     next(error);

@@ -2,10 +2,13 @@ import { isSeller, isUser } from '@packages/middlewares/authorizeRoles.js';
 import isAuthenticated from '@packages/middlewares/isAuthenticated.js';
 import express, { type Router } from 'express';
 import {
+  addUserAddress,
   createShop,
   createStripeConnectLink,
+  deleteUserAddress,
   getSeller,
   getUser,
+  getUserAddresses,
   loginSeller,
   loginUser,
   logoutUser,
@@ -36,5 +39,8 @@ router.post('/create-stripe-link', createStripeConnectLink);
 router.post('/login-seller', loginSeller);
 router.get('/logged-in-seller', isAuthenticated, isSeller, getSeller);
 router.get('/logout-user', logoutUser)
+router.post("/add-address", isAuthenticated, addUserAddress)
+router.delete("/delete-address/:addressId", isAuthenticated, deleteUserAddress)
+router.get("/shipping-addresses", isAuthenticated, getUserAddresses)
 
 export default router;

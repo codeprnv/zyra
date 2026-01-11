@@ -1,22 +1,31 @@
 'use client';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-    Bell,
-    CheckCircle,
-    Clock,
-    Inbox,
-    Loader2,
-    Lock,
-    LogOut,
-    MapPin,
-    ShoppingBag,
-    Truck,
-    User,
+  BadgeCheck,
+  Bell,
+  CheckCircle,
+  Clock,
+  Gift,
+  Inbox,
+  Loader2,
+  Lock,
+  LogOut,
+  MapPin,
+  Pencil,
+  PhoneCall,
+  Receipt,
+  Settings,
+  ShoppingBag,
+  Truck,
+  User,
 } from 'lucide-react';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import useUser from '../../hooks/useUser';
+import QuickActionCard from '../../shared/components/cards/quick-action-card';
 import StatsCard from '../../shared/components/cards/stats-card';
+import ShippingAddressSection from '../../shared/components/shippingAddress';
 import axiosInstance from '../../utils/axiosInstance';
 
 const NavItem = ({ label, Icon, active, danger, onClick }: any) => (
@@ -128,6 +137,75 @@ const ProfilePage = () => {
                 onClick={() => logOutHandler()}
               />
             </nav>
+          </div>
+
+          {/* Main content */}
+          <div className='w-full rounded-md border border-gray-100 bg-white p-6 shadow-md md:w-[55%]'>
+            <h2 className='mb-4 text-xl font-semibold text-gray-800'>
+              {activeTab}
+            </h2>
+            {activeTab === 'Profile' && !isLoading && user ? (
+              <div className='space-y-4 text-sm text-gray-700'>
+                <div className='flex items-center gap-3'>
+                  <Image
+                    src={
+                      user?.avatar ||
+                      'https://ik.imagekit.io/codeprnv/products/woman-with-long-brown-hair.jpg?updatedAt=1767619985684'
+                    }
+                    alt=''
+                    width={60}
+                    height={60}
+                    className='h-16 w-16 rounded-full border border-gray-200 object-cover'
+                  />
+                  <button className='flex items-center gap-1 text-xs font-medium text-blue-500'>
+                    <Pencil className='h-4 w-4' /> Change Photo
+                  </button>
+                </div>
+                <p>
+                  <span className='font-semibold'>Name: </span> {user?.name}
+                </p>
+                <p>
+                  <span className='font-semibold'>Email: </span> {user?.email}
+                </p>
+                <p>
+                  <span className='font-semibold'>Joined: </span>{' '}
+                  {new Date(user?.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+            ) : activeTab === 'Shipping Address' ? (
+              <ShippingAddressSection />
+            ) : (
+              <></>
+            )}
+          </div>
+          {/* Right quick panel */}
+          <div className='w-full space-y-4 md:w-1/4'>
+            <QuickActionCard
+              Icon={Gift}
+              title={'Referral Program'}
+              description='Invite friends and earn rewards'
+            />
+            <QuickActionCard
+              Icon={BadgeCheck}
+              title={'Your Badges'}
+              description='View your earned achievements'
+            />
+            <QuickActionCard
+              Icon={Settings}
+              title={'Account Settings'}
+              description='Manage preferences and security'
+            />
+
+            <QuickActionCard
+              Icon={Receipt}
+              title={'Billing History'}
+              description='Check your recent payments.'
+            />
+            <QuickActionCard
+              Icon={PhoneCall}
+              title={'Support Center'}
+              description='Need help? Contact support.'
+            />
           </div>
         </div>
       </div>
