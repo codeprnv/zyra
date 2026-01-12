@@ -1,5 +1,24 @@
-import express, { type Router } from "express";
+import { isSeller } from '@packages/middlewares/authorizeRoles';
+import isAuthenticated from '@packages/middlewares/isAuthenticated';
+import express, { type Router } from 'express';
+import {
+    createPaymentIntent,
+    createPaymentSession,
+    getSellerOrders,
+    verifyCouponCode,
+    verifyingPaymentSession,
+} from '../controllers/order.controller';
 
-const router: Router = express.Router()
+const router: Router = express.Router();
 
-export default router
+router.post('/create-payment-intent', isAuthenticated, createPaymentIntent);
+router.post('/create-payment-session', isAuthenticated, createPaymentSession);
+router.get(
+  '/verifying-payment-session',
+  isAuthenticated,
+  verifyingPaymentSession
+);
+router.get('/get-seller-orders', isAuthenticated, isSeller, getSellerOrders);
+router.put('/verify-coupon', isAuthenticated, verifyCouponCode);
+
+export default router;

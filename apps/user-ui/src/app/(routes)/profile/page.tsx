@@ -25,7 +25,9 @@ import React, { useEffect, useState } from 'react';
 import useUser from '../../hooks/useUser';
 import QuickActionCard from '../../shared/components/cards/quick-action-card';
 import StatsCard from '../../shared/components/cards/stats-card';
+import ChangePassword from '../../shared/components/change-password';
 import ShippingAddressSection from '../../shared/components/shippingAddress';
+import OrdersTable from '../../shared/components/tables/order-table';
 import axiosInstance from '../../utils/axiosInstance';
 
 const NavItem = ({ label, Icon, active, danger, onClick }: any) => (
@@ -174,6 +176,10 @@ const ProfilePage = () => {
               </div>
             ) : activeTab === 'Shipping Address' ? (
               <ShippingAddressSection />
+            ) : activeTab === 'My Orders' ? (
+              <OrdersTable />
+            ) : activeTab === 'Change Password' ? (
+              <ChangePassword />
             ) : (
               <></>
             )}

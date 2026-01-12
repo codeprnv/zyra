@@ -24,6 +24,52 @@ const CartPage = () => {
   const [discountAmount, setDiscountAmount] = useState(0);
   const [couponCode, setCouponCode] = useState('');
   const [selectedAddressId, setSelectedAddressId] = useState('');
+  const [error, setError] = useState('');
+  const [storedCouponCode, setStoredCouponCode] = useState('');
+
+  const couponCodeApplyHandler = async () => {
+    setError('');
+
+    if (!couponCode.trim()) {
+      setError('Coupon code is required!');
+      return;
+    }
+
+    try {
+      const res = await axiosInstance.put('/order/api/verify-coupon', {
+        couponCode: couponCode.trim(),
+        cart,
+      });
+
+      if (res.data.valid) {
+        setStoredCouponCode(couponCode.trim());
+        setDiscountAmount(parseFloat(res.data.discounAmount));
+        setDiscountPercent(res.data.discount);
+        setDiscountedProductId(res.data.discountedProductId);
+        setCouponCode('');
+      } else {
+        setDiscountAmount(0);
+        setDiscountPercent(0);
+        setDiscountedProductId('');
+        setError(
+          res.data.message || 'Coupon code not valid for any items in cart.'
+        );
+      }
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setDiscountAmount(0);
+        setDiscountPercent(0);
+        setDiscountedProductId('');
+        const errMsg =
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (error as any)?.response?.data?.message ||
+          'Coupon code not valid for any items in cart.';
+        setError(errMsg);
+      } else {
+        console.error('An unknown error occured!: ', error);
+      }
+    }
+  };
 
   const decreaseQuantity = (id: string) => {
     useStore.setState((state: any) => ({
@@ -217,13 +263,13 @@ const CartPage = () => {
                   />
                   <button
                     className='cursor-pointer rounded-lg bg-blue-500 px-4 text-white transition-all hover:bg-blue-600'
-                    // onClick={() => couponCodeApply()}
+                    onClick={() => couponCodeApplyHandler()}
                   >
                     Apply
                   </button>
-                  {/* {error && (
+                  {error && (
                     <p className='pt-2 text-sm text-red-500'>{error}</p>
-                  )} */}
+                  )}
                 </div>
                 <hr className='my-4 text-slate-200' />
                 <div className='mb-4'>

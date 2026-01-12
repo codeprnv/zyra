@@ -3,6 +3,7 @@ import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
+import { createOrder } from './controllers/order.controller';
 import orderRouter from './routes/order.route';
 
 const app = express();
@@ -18,12 +19,21 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json())
-app.use(cookieParser())
+app.post(
+  '/api/create-order',
+  bodyParser.raw({ type: 'application/json' }),
+  (req, res, next) => {
+    (req as any).rawBody = req.body;
+    next();
+  },
+  createOrder
+);
+app.use(express.json());
+app.use(cookieParser());
 
-app.use(errorMiddleware)
+app.use(errorMiddleware);
 
-app.use('/api', orderRouter)
+app.use('/api', orderRouter);
 
 const port = process.env.ORDER_SERVICE_PORT
   ? Number(process.env.ORDER_SERVICE_PORT)
