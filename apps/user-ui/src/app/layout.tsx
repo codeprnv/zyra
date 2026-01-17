@@ -28,8 +28,8 @@ const oregano = Oregano({
 
 const montserrat = Montserrat({
   subsets: ['latin'],
-  variable: '--font-montserrat'
-})
+  variable: '--font-montserrat',
+});
 
 export default function RootLayout({
   children,

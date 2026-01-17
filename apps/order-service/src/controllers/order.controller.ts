@@ -1,14 +1,54 @@
-import { ValidationError } from '@packages/error-handler';
+import { NotFoundError, ValidationError } from '@packages/error-handler';
 import prisma from '@packages/libs/prisma';
 import redis from '@packages/libs/redis';
-import type { NextFunction, Request, Response } from 'express';
+import type { NextFunction, Response } from 'express';
 import type { Prisma } from 'generated/prisma/client';
-import Stripe from 'stripe';
+// import Stripe from 'stripe';
+import crypto from 'crypto';
 import { sendMail } from '../utils/send-email';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2025-12-15.clover',
+// const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+//   apiVersion: '2025-12-15.clover',
+// });
+import Razorpay from 'razorpay';
+
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID as string,
+  key_secret: process.env.RAZORPAY_KEY_SECRET as string,
 });
+
+// export const createPaymentIntent = async (
+//   req: any,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   try {
+//     const { amount, sellerStripeAccountId, sessionId } = req.body;
+
+//     const customerAmount = Math.round(amount * 100);
+//     const platformFee = Math.floor(customerAmount * 0.1);
+
+//     const paymentIntent = await stripe.paymentIntents.create({
+//       amount: customerAmount,
+//       currency: 'usd',
+//       payment_method_types: ['card'],
+//       application_fee_amount: platformFee,
+//       transfer_data: {
+//         destination: sellerStripeAccountId,
+//       },
+//       metadata: {
+//         sessionId,
+//         userId: req.user.id,
+//       },
+//     });
+
+//     return res.status(200).send({
+//       clientSecret: paymentIntent.client_secret,
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
 
 export const createPaymentIntent = async (
   req: any,
@@ -16,32 +56,146 @@ export const createPaymentIntent = async (
   next: NextFunction
 ) => {
   try {
-    const { amount, sellerStripeAccountId, sessionId } = req.body;
+    const { amount, sellerRazorpayAccountId, sessionId } = req.body;
 
-    const customerAmount = Math.round(amount * 100);
-    const platformFee = Math.floor(customerAmount * 0.1);
+    const customerAmount = Math.round(amount * 100); // paise
+    const platformFee = Math.floor(customerAmount * 0.1); // 10% platform fee
+    const sellerAmount = customerAmount - platformFee; // seller gets remaining
 
-    const paymentIntent = await stripe.paymentIntents.create({
+    await redis.setex(
+      `payment-seller:${sessionId}`,
+      600,
+      JSON.stringify({
+        sellerRazorpayAccountId,
+        sellerAmount,
+        platformFee,
+        customerAmount,
+      })
+    );
+
+    const order = await razorpay.orders.create({
       amount: customerAmount,
-      currency: 'usd',
-      payment_method_types: ['card'],
-      application_fee_amount: platformFee,
-      transfer_data: {
-        destination: sellerStripeAccountId,
-      },
-      metadata: {
+      currency: 'INR',
+      receipt: `order_${sessionId}`,
+      notes: {
         sessionId,
         userId: req.user.id,
+        platformFee: platformFee.toString(),
+        sellerAmount: sellerAmount.toString(),
       },
     });
 
     return res.status(200).send({
-      clientSecret: paymentIntent.client_secret,
+      orderId: order.id, // Changed from clientSecret
+      amount: order.amount,
+      currency: order.currency,
     });
   } catch (error) {
     next(error);
   }
 };
+
+// export const createPaymentSession = async (
+//   req: any,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   try {
+//     const { cart, selectedAddressId, coupon } = req.body;
+//     const userId = req.user.id;
+
+//     if (!cart || !Array.isArray(cart) || cart.length === 0) {
+//       throw new ValidationError('Cart is empty or invalid!');
+//     }
+
+//     const normalizedCart = JSON.stringify(
+//       cart
+//         .map((item: any) => ({
+//           id: item.id,
+//           quantity: item.quantity,
+//           sale_price: item.sale_price,
+//           shopId: item.shopId,
+//           selectedOptions: item.selectedOptions || {},
+//         }))
+//         .sort((a, b) => a.id.localCompare(b.id))
+//     );
+
+//     const keys = await redis.keys('payment-session:*');
+//     for (const key of keys) {
+//       const data = await redis.get(key);
+//       if (data) {
+//         const session = JSON.parse(data);
+//         if (session.userId === userId) {
+//           const existingCart = JSON.stringify(
+//             session.cart
+//               .map((item: any) => ({
+//                 id: item.id,
+//                 quantity: item.quantity,
+//                 sale_price: item.sale_price,
+//                 shopId: item.shopId,
+//                 selectedOptions: item.selectedOptions || {},
+//               }))
+//               .sort((a: any, b: any) => a.id.localCompare(b.id))
+//           );
+//           if (existingCart === normalizedCart) {
+//             return res.status(200).json({ sessionId: key.split(':')[1] });
+//           } else {
+//             await redis.del(key);
+//           }
+//         }
+//       }
+//     }
+
+//     // fetch sellers and their stripe accounts
+//     const uniqueShopIds = [...new Set(cart.map((item: any) => item.shopId))];
+
+//     const shops = await prisma.shops.findMany({
+//       where: {
+//         id: { in: uniqueShopIds },
+//       },
+//       select: {
+//         id: true,
+//         sellerId: true,
+//         sellers: {
+//           select: {
+//             stripeId: true,
+//           },
+//         },
+//       },
+//     });
+
+//     const sellerData = shops.map((shop: any) => ({
+//       shopId: shop.id,
+//       sellerId: shop.sellerId,
+//       stripeAccountId: shop?.sellers?.stripeId,
+//     }));
+
+//     const totalAmount = cart.reduce((total: number, item: any) => {
+//       return total + item.quantity * item.sale_price;
+//     }, 0);
+
+//     // create session payload
+//     const sessionId = crypto.randomUUID();
+//     const sessionData = {
+//       userId,
+//       cart,
+//       sellers: sellerData,
+//       totalAmount,
+//       shippingAddressId: selectedAddressId || null,
+//       coupon: coupon || null,
+//     };
+
+//     await redis.setex(
+//       `payment-session:${sessionId}`,
+//       600,
+//       JSON.stringify(sessionData)
+//     );
+
+//     return res.status(201).json({ sessionId });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
 
 export const createPaymentSession = async (
   req: any,
@@ -65,7 +219,7 @@ export const createPaymentSession = async (
           shopId: item.shopId,
           selectedOptions: item.selectedOptions || {},
         }))
-        .sort((a, b) => a.id.localCompare(b.id))
+        .sort((a, b) => a.id.localeCompare(b.id)) // Fixed: localCompare -> localeCompare
     );
 
     const keys = await redis.keys('payment-session:*');
@@ -83,7 +237,7 @@ export const createPaymentSession = async (
                 shopId: item.shopId,
                 selectedOptions: item.selectedOptions || {},
               }))
-              .sort((a: any, b: any) => a.id.localCompare(b.id))
+              .sort((a: any, b: any) => a.id.localeCompare(b.id))
           );
           if (existingCart === normalizedCart) {
             return res.status(200).json({ sessionId: key.split(':')[1] });
@@ -94,7 +248,7 @@ export const createPaymentSession = async (
       }
     }
 
-    // fetch sellers and their stripe accounts
+    // fetch sellers and their RAZORPAY linked accounts
     const uniqueShopIds = [...new Set(cart.map((item: any) => item.shopId))];
 
     const shops = await prisma.shops.findMany({
@@ -106,7 +260,7 @@ export const createPaymentSession = async (
         sellerId: true,
         sellers: {
           select: {
-            stripeId: true,
+            razorpayAccountId: true, // CHANGED: stripeId -> razorpayAccountId
           },
         },
       },
@@ -115,7 +269,7 @@ export const createPaymentSession = async (
     const sellerData = shops.map((shop: any) => ({
       shopId: shop.id,
       sellerId: shop.sellerId,
-      stripeAccountId: shop?.sellers?.stripeId,
+      razorpayAccountId: shop?.sellers?.razorpayAccountId, // CHANGED: stripeAccountId -> razorpayAccountId
     }));
 
     const totalAmount = cart.reduce((total: number, item: any) => {
@@ -142,6 +296,7 @@ export const createPaymentSession = async (
     return res.status(201).json({ sessionId });
   } catch (error) {
     next(error);
+    return;
   }
 };
 
@@ -174,35 +329,257 @@ export const verifyingPaymentSession = async (
   }
 };
 
+// export const createOrder = async (
+//   req: any,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   try {
+//     const stripeSignature = req.headers['stripe-signature'];
+//     if (!stripeSignature) {
+//       return res.status(400).send('Missing Stripe Signature!');
+//     }
+
+//     const rawBody = (req as any).rawBody;
+
+//     let event;
+//     try {
+//       event = stripe.webhooks.constructEvent(
+//         rawBody,
+//         stripeSignature,
+//         process.env.STRIPE_WEBHOOK_SECRET as string
+//       );
+//     } catch (error: any) {
+//       console.error('Webhook signature verification failed: ', error.message);
+//       return res.status(400).send(`Webhook Error: ${error.message}`);
+//     }
+
+//     if (event.type === 'payment_intent.succeeded') {
+//       const paymentIntent = event.data.object as Stripe.PaymentIntent;
+//       const sessionId = paymentIntent.metadata.sessionId;
+//       const userId = paymentIntent.metadata.userId;
+
+//       const sessionKey = `payment-session:${sessionId}`;
+//       const sessionData = await redis.get(sessionKey);
+
+//       if (!sessionData) {
+//         console.error('Session data expired or missing for: ', sessionId);
+//         return res
+//           .status(400)
+//           .send('No session found, skipping order creation!');
+//       }
+//       const { cart, totalAmount, shippingAddressId, coupon } =
+//         JSON.parse(sessionData);
+
+//       const user = await prisma.users.findUnique({ where: { id: userId } });
+//       const name = user?.name;
+//       const email = user?.email;
+
+//       const shopGrouped = cart.reduce((acc: any, item: any) => {
+//         if (!acc[item.shopId]) acc[item.shopId] = [];
+//         acc[item.shopId].push(item);
+//         return acc;
+//       }, {});
+
+//       for (const shopId in shopGrouped) {
+//         const orderItems = shopGrouped[shopId];
+
+//         let orderTotal = orderItems.reduce(
+//           (sum: number, p: any) => sum + p.quantity * p.sale_price,
+//           0
+//         );
+
+//         if (
+//           coupon &&
+//           coupon.discountedProductId &&
+//           orderItems.some((item: any) => item.id === coupon.discountedProductId)
+//         ) {
+//           const discountedItem = orderItems.find(
+//             (item: any) => item.id === coupon.discountedProductId
+//           );
+
+//           if (discountedItem) {
+//             const discount =
+//               coupon.discountPercent > 0
+//                 ? (discountedItem.sale_price *
+//                     discountedItem.quantity *
+//                     coupon.discountPercent) /
+//                   100
+//                 : coupon.discountAmount;
+//             orderTotal -= discount;
+//           }
+//         }
+//         await prisma.orders.create({
+//           data: {
+//             userId,
+//             shopId,
+//             total: orderTotal,
+//             status: 'Paid',
+//             shippingAddressId: shippingAddressId || null,
+//             couponCode: coupon?.code || null,
+//             discountAmount: coupon?.discountAmount || 0,
+//             items: {
+//               create: orderItems.map((item: any) => ({
+//                 productId: item.id,
+//                 quantity: item.quantity,
+//                 price: item.sale_price,
+//                 selectedOptions: item.selectedOptions,
+//               })),
+//             },
+//           },
+//         });
+
+//         for (const item of orderItems) {
+//           const { id: productId, quantity } = item;
+
+//           await prisma.products.update({
+//             where: { id: productId },
+//             data: {
+//               stock: { decrement: quantity },
+//               totalSales: { increment: quantity },
+//             },
+//           });
+
+//           await prisma.productAnalytics.upsert({
+//             where: { productId },
+//             create: {
+//               productId,
+//               shopId,
+//               purchases: quantity,
+//               lastViewedAt: new Date(),
+//             },
+//             update: {
+//               purchases: { increment: quantity },
+//             },
+//           });
+
+//           const existingAnalytics = await prisma.userAnalytics.findUnique({
+//             where: { userId },
+//           });
+
+//           const newAction = {
+//             productId,
+//             shopId,
+//             action: 'purchase',
+//             timestamp: Date.now(),
+//           };
+
+//           const currentActions = Array.isArray(existingAnalytics?.actions)
+//             ? (existingAnalytics.actions as Prisma.JsonArray)
+//             : [];
+
+//           if (existingAnalytics) {
+//             await prisma.userAnalytics.update({
+//               where: { userId },
+//               data: {
+//                 lastVisited: new Date(),
+//                 actions: [...currentActions, newAction],
+//               },
+//             });
+//           } else {
+//             await prisma.userAnalytics.create({
+//               data: {
+//                 userId,
+//                 lastVisitedAt: new Date(),
+//                 actions: [newAction],
+//               },
+//             });
+//           }
+//         }
+
+//         await sendMail(
+//           email,
+//           '🏪 Your Zyra Order Confirmation',
+//           'order-confirmation',
+//           {
+//             name,
+//             cart,
+//             totalAmount: coupon?.discountAmount
+//               ? totalAmount - coupon?.discountAmount
+//               : totalAmount,
+//             trackingUrl: `http://localhost:3000/order/${sessionId}`,
+//           }
+//         );
+
+//         const createdShopIds = Object.keys(shopGrouped);
+//         const sellerShops = await prisma.shops.findMany({
+//           where: { id: { in: createdShopIds } },
+//           select: {
+//             id: true,
+//             sellerId: true,
+//             name: true,
+//           },
+//         });
+
+//         for (const shop of sellerShops) {
+//           const firstProduct = shopGrouped[shop.id][0];
+//           const productTitle = firstProduct?.title || 'new item';
+
+//           await prisma.notifications.create({
+//             data: {
+//               title: '🛒 New order received',
+//               message: `A customer just ordered ${productTitle} from your shop.`,
+//               creatorId: userId,
+//               receiverId: shop.sellerId,
+//               redirect_link: `http://localhost:3000/order/${sessionId}`,
+//             },
+//           });
+//         }
+
+//         await prisma.notifications.create({
+//           data: {
+//             title: '📦 Platform Order Alert',
+//             message: `A new order was placed by ${name}.`,
+//             creatorId: userId,
+//             receiverId: 'admin',
+//             redirect_link: `http://localhost:3000/order/${sessionId}`,
+//           },
+//         });
+
+//         await redis.del(sessionKey);
+//       }
+//     }
+//     return res.status(200).json({ received: true });
+//   } catch (error) {
+//     next(error);
+//     return;
+//   }
+// };
+
 export const createOrder = async (
   req: any,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const stripeSignature = req.headers['stripe-signature'];
-    if (!stripeSignature) {
-      return res.status(400).send('Missing Stripe Signature!');
+    // CHANGED: Razorpay signature header
+    const razorpaySignature = req.headers['x-razorpay-signature'];
+    if (!razorpaySignature) {
+      return res.status(400).send('Missing Razorpay Signature!');
     }
 
     const rawBody = (req as any).rawBody;
 
-    let event;
-    try {
-      event = stripe.webhooks.constructEvent(
-        rawBody,
-        stripeSignature,
-        process.env.STRIPE_WEBHOOK_SECRET as string
-      );
-    } catch (error: any) {
-      console.error('Webhook signature verification failed: ', error.message);
-      return res.status(400).send(`Webhook Error: ${error.message}`);
+    // CHANGED: Razorpay webhook signature verification
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET as string)
+      .update(rawBody)
+      .digest('hex');
+
+    if (expectedSignature !== razorpaySignature) {
+      console.error('Webhook signature verification failed');
+      return res.status(400).send('Invalid signature');
     }
 
-    if (event.type === 'payment_intent.succeeded') {
-      const paymentIntent = event.data.object as Stripe.PaymentIntent;
-      const sessionId = paymentIntent.metadata.sessionId;
-      const userId = paymentIntent.metadata.userId;
+    // CHANGED: Parse Razorpay webhook payload
+    const event = JSON.parse(rawBody.toString());
+
+    // CHANGED: Razorpay webhook events (payment.authorized = captured)
+    if (event.event === 'payment.authorized' || event.event === 'order.paid') {
+      const payment = event.payload.payment.entity;
+      // CHANGED: Extract from Razorpay notes (set in createPaymentIntent)
+      const sessionId = payment.notes.sessionId;
+      const userId = payment.notes.userId;
 
       const sessionKey = `payment-session:${sessionId}`;
       const sessionData = await redis.get(sessionKey);
@@ -213,13 +590,47 @@ export const createOrder = async (
           .status(400)
           .send('No session found, skipping order creation!');
       }
-      const { cart, totalAmount, shippingAddressId, coupon } =
+
+      // Get seller data from session (updated in createPaymentSession)
+      const { cart, totalAmount, shippingAddressId, coupon, sellers } =
         JSON.parse(sessionData);
 
       const user = await prisma.users.findUnique({ where: { id: userId } });
       const name = user?.name;
       const email = user?.email;
 
+      // **NEW: Create transfers to sellers** (Razorpay Route)
+      for (const seller of sellers) {
+        const customerAmount = Math.round(totalAmount * 100); // paise
+        const platformFee = Math.floor(customerAmount * 0.1);
+        const sellerAmount = customerAmount - platformFee;
+
+        // Only create transfer if seller has linked account
+        if (seller.razorpayAccountId) {
+          try {
+            await razorpay.transfers.create({
+              account: seller.razorpayAccountId,
+              amount: sellerAmount,
+              currency: 'INR',
+              // source: payment.id, // Link to this payment
+              notes: {
+                order_id: `order_${sessionId}`,
+                shopId: seller.shopId,
+                sessionId,
+              },
+            });
+            console.log(`✅ Transfer created to ${seller.razorpayAccountId}`);
+          } catch (transferError) {
+            console.error(
+              `❌ Transfer failed for ${seller.shopId}:`,
+              transferError
+            );
+            // Don't fail order creation if transfer fails
+          }
+        }
+      }
+
+      // **EXISTING ORDER CREATION LOGIC** (unchanged)
       const shopGrouped = cart.reduce((acc: any, item: any) => {
         if (!acc[item.shopId]) acc[item.shopId] = [];
         acc[item.shopId].push(item);
@@ -254,6 +665,7 @@ export const createOrder = async (
             orderTotal -= discount;
           }
         }
+
         await prisma.orders.create({
           data: {
             userId,
@@ -274,6 +686,7 @@ export const createOrder = async (
           },
         });
 
+        // **ALL EXISTING LOGIC** (stock updates, analytics, emails, notifications)
         for (const item of orderItems) {
           const { id: productId, quantity } = item;
 
@@ -380,10 +793,12 @@ export const createOrder = async (
             redirect_link: `http://localhost:3000/order/${sessionId}`,
           },
         });
-
-        await redis.del(sessionKey);
       }
+
+      // Clean up session
+      await redis.del(sessionKey);
     }
+
     return res.status(200).json({ received: true });
   } catch (error) {
     next(error);
@@ -486,5 +901,77 @@ export const verifyCouponCode = async (
   } catch (error) {
     next(error);
     return;
+  }
+};
+
+export const getOrderDetails = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const orderId = req.params.id;
+
+    const order = await prisma.orders.findUnique({
+      where: {
+        id: orderId,
+      },
+      include: {
+        items: true,
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundError('Order not found with this id!');
+    }
+
+    const shippingAddress = order.shippingAddressId
+      ? await prisma.address.findUnique({
+          where: {
+            id: order?.shippingAddressId,
+          },
+        })
+      : null;
+
+    const coupon = order.couponCode
+      ? await prisma.discount_codes.findUnique({
+          where: {
+            discountCode: order.couponCode,
+          },
+        })
+      : null;
+
+    const productIds = order.items.map((item: any) => item.productId);
+
+    const products = await prisma.products.findMany({
+      where: {
+        id: { in: productIds },
+      },
+      select: {
+        id: true,
+        title: true,
+        images: true,
+      },
+    });
+
+    const productMap = new Map(products.map((p: any) => [p.id, p]));
+
+    const items = order.items.map((item: any) => ({
+      ...item,
+      selectedOptions: item.selectedOptions,
+      product: productMap.get(item.productId) || null,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      order: {
+        ...order,
+        items,
+        shippingAddress,
+        couponCode: coupon,
+      },
+    });
+  } catch (error) {
+    next(error);
   }
 };

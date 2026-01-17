@@ -4,9 +4,6 @@
   "files": [],
   "references": [
     {
-      "path": "./apps/auth-service-e2e"
-    },
-    {
       "path": "./apps/auth-service"
     },
     {
@@ -26,6 +23,12 @@
     },
     {
       "path": "./apps/order-service"
+    },
+    {
+      "path": "./apps/admin-service"
+    },
+    {
+      "path": "./apps/admin-ui"
     }
   ]
 }

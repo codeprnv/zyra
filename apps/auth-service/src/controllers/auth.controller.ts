@@ -642,3 +642,86 @@ export const getUserAddresses = async (
     next(error);
   }
 };
+
+export const loginAdmin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      throw new ValidationError('Email and Password are required!');
+    }
+
+    const user = await prisma.users.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new AuthError("User doesn't exists!");
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      throw new AuthError('Invalid email or password!');
+    }
+
+    // const isAdmin = user.role === 'admin';
+
+    // if (!isAdmin) {
+    //   sendLog({
+    //     type: 'error',
+    //     message: `Admin login failed for ${email} -- not an admin`,
+    //     source: 'auth-service',
+    //   });
+    //   throw new AuthError('Invalid access!');
+    // }
+
+    // sendLog({
+    //   type: 'success',
+    //   message: `Admin login successful: ${email}`,
+    //   source: 'auth-service',
+    // });
+
+    res.clearCookie('seller_access_token');
+    res.clearCookie('seller_refresh_token');
+
+    const accessToken = jwt.sign(
+      { id: user.id, role: 'admin' },
+      process.env.ACCESS_TOKEN_SECRET as string,
+      { expiresIn: '15m' }
+    );
+
+    const refreshToken = jwt.sign(
+      { id: user.id, role: 'admin' },
+      process.env.REFRESH_TOKEN_SECRET as string,
+      { expiresIn: '7d' }
+    );
+
+    setCookie(res, 'refresh_token', refreshToken);
+    setCookie(res, 'access_token', accessToken);
+
+    res.status(200).json({
+      success: true,
+      message: 'Login Successful!',
+      admin: { id: user.id, email: user.email, name: user.name },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAdmin = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const admin = req.admin;
+    res.status(201).json({
+      success: true,
+      admin,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

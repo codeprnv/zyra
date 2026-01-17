@@ -23,17 +23,19 @@ const page = () => {
     staleTime: 2 * 60 * 1000,
   });
 
-  const { data: latestProducts, isLoading:isLatestProductsLoading } = useQuery({
-    queryKey: ['latest-products'],
-    queryFn: async () => {
-      const res = await axiosInstance.get(
-        '/product/api/get-all-products?page=1&limit=10&type=latest'
-      );
-      console.log('Data: ', res.data);
-      return res?.data?.products || [];
-    },
-    staleTime: 2 * 60 * 1000,
-  });
+  const { data: latestProducts, isLoading: isLatestProductsLoading } = useQuery(
+    {
+      queryKey: ['latest-products'],
+      queryFn: async () => {
+        const res = await axiosInstance.get(
+          '/product/api/get-all-products?page=1&limit=10&type=latest'
+        );
+        console.log('Data: ', res.data);
+        return res?.data?.products || [];
+      },
+      staleTime: 2 * 60 * 1000,
+    }
+  );
 
   const { data: shops, isLoading: shopLoading } = useQuery({
     queryKey: ['shops'],

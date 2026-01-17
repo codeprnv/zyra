@@ -27,6 +27,26 @@ const CartPage = () => {
   const [error, setError] = useState('');
   const [storedCouponCode, setStoredCouponCode] = useState('');
 
+  const createPaymentSession = async () => {
+    setLoading(true);
+    try {
+      const res = await axiosInstance.post(
+        '/order/api/create-payment-session',
+        {
+          cart,
+          selectedAddressId,
+          coupon: {},
+        }
+      );
+      const sessionId = res.data.sessionId;
+      router.push(`/checkout?sessionId=${sessionId}`);
+    } catch (error) {
+      console.error('Error creating payment session: ', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const couponCodeApplyHandler = async () => {
     setError('');
 
@@ -306,6 +326,7 @@ const CartPage = () => {
                   <span>${(subTotal - discountAmount).toFixed(2)}</span>
                 </div>
                 <button
+                  onClick={createPaymentSession}
                   type='button'
                   disabled={loading}
                   className='mt-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#010f1c] py-3 text-white transition-colors duration-200 hover:bg-[#0989FF]'

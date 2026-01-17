@@ -2,11 +2,12 @@ import { isSeller } from '@packages/middlewares/authorizeRoles';
 import isAuthenticated from '@packages/middlewares/isAuthenticated';
 import express, { type Router } from 'express';
 import {
-    createPaymentIntent,
-    createPaymentSession,
-    getSellerOrders,
-    verifyCouponCode,
-    verifyingPaymentSession,
+  createPaymentIntent,
+  createPaymentSession,
+  getOrderDetails,
+  getSellerOrders,
+  verifyCouponCode,
+  verifyingPaymentSession,
 } from '../controllers/order.controller';
 
 const router: Router = express.Router();
@@ -19,6 +20,7 @@ router.get(
   verifyingPaymentSession
 );
 router.get('/get-seller-orders', isAuthenticated, isSeller, getSellerOrders);
+router.get('/get-order-details/:id', isAuthenticated, getOrderDetails);
 router.put('/verify-coupon', isAuthenticated, verifyCouponCode);
 
 export default router;

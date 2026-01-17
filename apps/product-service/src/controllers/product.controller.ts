@@ -821,7 +821,6 @@ export const topShops = async (
   }
 };
 
-
 export const getAllEvents = async (
   req: Request,
   res: Response,

@@ -27,7 +27,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: ['http://localhost:3000', "http://localhost:3001"],
+    origin: ['http://localhost:3000', 'http://localhost:3001'],
     allowedHeaders: ['Authorization', 'Content-Type'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -44,12 +44,10 @@ app.get('/health', (req, res) => {
   res.status(200).send('Auth Service running successfully!');
 });
 
-
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.get('/docs-json', (req, res) => {
   res.json(swaggerDocument);
 });
-
 
 app.use('/api', authRouter);
 

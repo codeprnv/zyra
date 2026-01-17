@@ -20,7 +20,7 @@ const isAuthenticated = async (req: any, res: Response, next: NextFunction) => {
       process.env.ACCESS_TOKEN_SECRET as string
     ) as {
       id: string;
-      role: 'user' | 'seller';
+      role: 'user' | 'seller' | 'admin';
     };
     if (!decoded) {
       return res.status(401).json({
@@ -29,18 +29,23 @@ const isAuthenticated = async (req: any, res: Response, next: NextFunction) => {
     }
 
     let account;
-    
+
     if (decoded.role === 'user') {
-       account = await prisma.users.findUnique({
+      account = await prisma.users.findUnique({
         where: { id: decoded.id },
-       });
-      req.user = account
+      });
+      req.user = account;
     } else if (decoded.role === 'seller') {
       account = await prisma.sellers.findUnique({
         where: { id: decoded.id },
-        include: {shop: true}
-      })
-      req.seller = account
+        include: { shop: true },
+      });
+      req.seller = account;
+    } else if (decoded.role === 'admin') {
+      account = await prisma.users.findUnique({
+        where: { id: decoded.id },
+      });
+      req.admin = account;
     }
 
     if (!account) {

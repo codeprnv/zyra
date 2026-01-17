@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
-
 type formData = {
   email: string;
   password: string;
@@ -56,7 +55,7 @@ const Login = () => {
   };
   return (
     <div className='min-h-screen w-full bg-[#f1f1f1] py-10'>
-      <h1 className='font-Poppins text-center text-4xl font-semibold text-black'>
+      <h1 className='text-center font-Poppins text-4xl font-semibold text-black'>
         Login
       </h1>
       <p className='py-3 text-center text-lg font-medium text-[#00000099]'>

@@ -17,7 +17,11 @@ const app = express();
 
 app.use(
   cors({
-    origin: ['http://localhost:3000', 'http://localhost:3001'],
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3002',
+    ],
     allowedHeaders: ['Authorization', 'Content-Type'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -47,6 +51,7 @@ app.get('/gateway-health', (req, res) => {
   res.send({ message: 'Welcome to api-gateway!' });
 });
 
+app.use('/admin', proxy(`${host}:${process.env.ADMIN_SERVICE_PORT}`));
 app.use('/order', proxy(`${host}:${process.env.ORDER_SERVICE_PORT}`));
 app.use('/product', proxy(`${host}:${process.env.PRODUCT_SERVICE_PORT}`));
 app.use('/', proxy(`${host}:${process.env.AUTH_SERVICE_PORT}`));

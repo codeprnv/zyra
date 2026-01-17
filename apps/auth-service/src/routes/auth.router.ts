@@ -1,4 +1,8 @@
-import { isSeller, isUser } from '@packages/middlewares/authorizeRoles.js';
+import {
+  isAdmin,
+  isSeller,
+  isUser,
+} from '@packages/middlewares/authorizeRoles.js';
 import isAuthenticated from '@packages/middlewares/isAuthenticated.js';
 import express, { type Router } from 'express';
 import {
@@ -6,9 +10,11 @@ import {
   createShop,
   createStripeConnectLink,
   deleteUserAddress,
+  getAdmin,
   getSeller,
   getUser,
   getUserAddresses,
+  loginAdmin,
   loginSeller,
   loginUser,
   logoutUser,
@@ -38,9 +44,11 @@ router.post('/create-shop', createShop);
 router.post('/create-stripe-link', createStripeConnectLink);
 router.post('/login-seller', loginSeller);
 router.get('/logged-in-seller', isAuthenticated, isSeller, getSeller);
-router.get('/logout-user', logoutUser)
-router.post("/add-address", isAuthenticated, addUserAddress)
-router.delete("/delete-address/:addressId", isAuthenticated, deleteUserAddress)
-router.get("/shipping-addresses", isAuthenticated, getUserAddresses)
+router.get('/logout-user', logoutUser);
+router.post('/add-address', isAuthenticated, addUserAddress);
+router.delete('/delete-address/:addressId', isAuthenticated, deleteUserAddress);
+router.get('/shipping-addresses', isAuthenticated, getUserAddresses);
+router.post('/login-admin', loginAdmin);
+router.get('/logged-in-admin', isAuthenticated, isAdmin, getAdmin);
 
 export default router;

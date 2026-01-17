@@ -41,7 +41,11 @@
       "options": {
         "targetName": "test"
       },
-      "exclude": ["apps/auth-service-e2e/**/*", "apps/order-service-e2e/**/*"]
+      "exclude": [
+        "apps/auth-service-e2e/**/*",
+        "apps/order-service-e2e/**/*",
+        "apps/admin-service-e2e/**/*"
+      ]
     },
     {
       "plugin": "@nx/docker",

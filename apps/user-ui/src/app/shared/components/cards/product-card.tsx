@@ -30,11 +30,11 @@ const ProductCard = ({
   const cart = useStore((state: any) => state.cart);
   const isInCart = cart.some((item: any) => item.id === product.id);
 
-  useEffect(() => {
-    console.log('🧪 ProductCard user:', user.user);
-    console.log('🧪 ProductCard location:', location);
-    console.log('🧪 ProductCard device:', deviceInfo);
-  },[])
+  // useEffect(() => {
+  //   console.log('🧪 ProductCard user:', user.user);
+  //   console.log('🧪 ProductCard location:', location);
+  //   console.log('🧪 ProductCard device:', deviceInfo);
+  // },[])
 
   useEffect(() => {
     if (isEvent && product?.ending_date) {

@@ -190,12 +190,7 @@ const SidebarWrapper = () => {
               />
               <SidebarItems
                 title='Logout'
-                icon={
-                  <LogOut
-                    size={24}
-                    color={getIconColor('/logout')}
-                  />
-                }
+                icon={<LogOut size={24} color={getIconColor('/logout')} />}
                 isActive={activeSidebar === '/logout'}
                 href='/'
               />
